@@ -278,7 +278,7 @@ export function LoginPage() {
 
           {/* Feature Pills */}
           <div className="flex flex-wrap justify-center gap-[8px]">
-            {featurePills.map((label) => (
+            {featurePills.map((label: string) => (
               <span
                 key={label}
                 className="border border-forest-700 rounded-[999px] px-[14px] py-[6px]
