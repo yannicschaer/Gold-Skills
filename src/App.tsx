@@ -1,27 +1,25 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
+import { useContentStore } from '@/store/content'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RoleRoute } from '@/components/RoleRoute'
 import { Layout } from '@/components/Layout'
 import { LoginPage } from '@/pages/LoginPage'
+import { HomePage } from '@/pages/HomePage'
 import { MySkillsPage } from '@/pages/MySkillsPage'
 import { TeamOverviewPage } from '@/pages/TeamOverviewPage'
 import { MemberSkillsPage } from '@/pages/MemberSkillsPage'
 import { AdminPage } from '@/pages/AdminPage'
 
-function HomePage() {
-  const { canEditSkills } = useAuthStore()
-  if (!canEditSkills) return <Navigate to="/team" replace />
-  return <MySkillsPage />
-}
-
 export default function App() {
   const { initialize } = useAuthStore()
+  const { fetchAppSettings } = useContentStore()
 
   useEffect(() => {
     initialize()
-  }, [initialize])
+    fetchAppSettings()
+  }, [initialize, fetchAppSettings])
 
   return (
     <BrowserRouter>
@@ -35,12 +33,20 @@ export default function App() {
           }
         >
           <Route path="/" element={<HomePage />} />
+          <Route
+            path="/skills"
+            element={
+              <RoleRoute allowedRoles={['admin', 'designer']} redirectTo="/">
+                <MySkillsPage />
+              </RoleRoute>
+            }
+          />
           <Route path="/team" element={<TeamOverviewPage />} />
           <Route path="/team/:userId" element={<MemberSkillsPage />} />
           <Route
             path="/admin"
             element={
-              <RoleRoute allowedRoles={['admin']} redirectTo="/team">
+              <RoleRoute allowedRoles={['admin']} redirectTo="/">
                 <AdminPage />
               </RoleRoute>
             }
