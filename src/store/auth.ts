@@ -13,6 +13,7 @@ interface AuthState {
   canEditSkills: boolean
   initialize: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
 }
@@ -23,6 +24,31 @@ function deriveRoleFlags(role: Profile['role'] | null) {
     isAdmin: role === 'admin',
     canEditSkills: role === 'admin' || role === 'designer',
   }
+}
+
+async function ensureProfile(user: User) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (data) return data as Profile
+
+  // Create profile for new OAuth users
+  const { data: newProfile } = await supabase
+    .from('profiles')
+    .insert({
+      id: user.id,
+      email: user.email ?? '',
+      full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? '',
+      role: 'designer',
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    } as never)
+    .select()
+    .single()
+
+  return newProfile as Profile | null
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -39,24 +65,35 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ session, user: session?.user ?? null, loading: false })
 
     if (session?.user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-      if (data) {
-        const profile = data as Profile
+      const profile = await ensureProfile(session.user)
+      if (profile) {
         set({ profile, ...deriveRoleFlags(profile.role) })
       }
     }
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       set({ session, user: session?.user ?? null })
+      if (session?.user) {
+        const profile = await ensureProfile(session.user)
+        if (profile) {
+          set({ profile, ...deriveRoleFlags(profile.role) })
+        }
+      } else {
+        set({ profile: null, ...deriveRoleFlags(null) })
+      }
     })
   },
 
   signIn: async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  },
+
+  signInWithGoogle: async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
     if (error) throw error
   },
 
