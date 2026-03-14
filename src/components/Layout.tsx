@@ -3,14 +3,14 @@ import { useAuthStore } from '@/store/auth'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: '/icons/home.svg' },
-  { to: '/skills', label: 'Skills Matrix', icon: '/icons/chart-bar.svg', requireEdit: true },
+  { to: '/skills', label: 'Meine Matrix', icon: '/icons/chart-bar.svg', requireEdit: true },
   { to: '/team', label: 'Team-Übersicht', icon: '/icons/chart-bar.svg' },
   { to: '/admin', label: 'Admin', icon: '/icons/gear.svg', requireAdmin: true },
 ]
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Home',
-  '/skills': 'Skills Matrix',
+  '/skills': 'Meine Matrix',
   '/team': 'Team-Übersicht',
   '/admin': 'Admin',
 }

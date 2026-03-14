@@ -74,6 +74,28 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   },
 
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {
+    // Optimistic update first so UI reacts instantly
+    const { ratings } = get()
+    const existingIdx = ratings.findIndex(
+      (r) => r.user_id === userId && r.skill_id === skillId,
+    )
+    const updated = [...ratings]
+    const newRating: SkillRating = {
+      id: existingIdx >= 0 ? ratings[existingIdx].id : crypto.randomUUID(),
+      user_id: userId,
+      skill_id: skillId,
+      current_level: currentLevel as SkillRating['current_level'],
+      target_level: targetLevel as SkillRating['target_level'],
+      updated_at: new Date().toISOString(),
+    }
+    if (existingIdx >= 0) {
+      updated[existingIdx] = newRating
+    } else {
+      updated.push(newRating)
+    }
+    set({ ratings: updated })
+
+    // Persist to database
     const { error } = await supabase.from('skill_ratings').upsert(
       {
         user_id: userId,
@@ -83,27 +105,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       } as never,
       { onConflict: 'user_id,skill_id' },
     )
-    if (error) throw error
-
-    // Refresh local ratings
-    const { ratings } = get()
-    const existing = ratings.findIndex(
-      (r) => r.user_id === userId && r.skill_id === skillId,
-    )
-    const updated = [...ratings]
-    const newRating: SkillRating = {
-      id: existing >= 0 ? ratings[existing].id : crypto.randomUUID(),
-      user_id: userId,
-      skill_id: skillId,
-      current_level: currentLevel as SkillRating['current_level'],
-      target_level: targetLevel as SkillRating['target_level'],
-      updated_at: new Date().toISOString(),
+    if (error) {
+      // Rollback on failure
+      set({ ratings })
+      throw error
     }
-    if (existing >= 0) {
-      updated[existing] = newRating
-    } else {
-      updated.push(newRating)
-    }
-    set({ ratings: updated })
   },
 }))

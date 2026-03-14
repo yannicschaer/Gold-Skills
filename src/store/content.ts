@@ -27,13 +27,23 @@ export const useContentStore = create<ContentState>((set) => ({
 
   fetchAppSettings: async () => {
     set({ contentLoading: true })
-    const data = await sanityClient.fetch<SanityAppSettings>(APP_SETTINGS_QUERY)
-    set({ appSettings: data, contentLoading: false })
+    try {
+      const data = await sanityClient.fetch<SanityAppSettings>(APP_SETTINGS_QUERY)
+      set({ appSettings: data, contentLoading: false })
+    } catch (err) {
+      console.error('Failed to fetch app settings from Sanity:', err)
+      set({ contentLoading: false })
+    }
   },
 
   fetchLoginPage: async () => {
     set({ contentLoading: true })
-    const data = await sanityClient.fetch<SanityLoginPage>(LOGIN_PAGE_QUERY)
-    set({ loginPage: data, contentLoading: false })
+    try {
+      const data = await sanityClient.fetch<SanityLoginPage>(LOGIN_PAGE_QUERY)
+      set({ loginPage: data, contentLoading: false })
+    } catch (err) {
+      console.error('Failed to fetch login page from Sanity:', err)
+      set({ contentLoading: false })
+    }
   },
 }))
