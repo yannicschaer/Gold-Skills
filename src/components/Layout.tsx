@@ -1,14 +1,15 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 
-const NAV_ITEMS = [
-  { to: '/', label: 'Meine Skills' },
-  { to: '/team', label: 'Team-Übersicht' },
-]
-
 export function Layout() {
-  const { profile, signOut } = useAuthStore()
+  const { profile, isAdmin, canEditSkills, signOut } = useAuthStore()
   const location = useLocation()
+
+  const navItems = [
+    ...(canEditSkills ? [{ to: '/', label: 'Meine Skills' }] : []),
+    { to: '/team', label: 'Team-Übersicht' },
+    ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -20,7 +21,7 @@ export function Layout() {
                 Gold Skills
               </span>
               <div className="flex gap-4">
-                {NAV_ITEMS.map((item) => (
+                {navItems.map((item) => (
                   <Link
                     key={item.to}
                     to={item.to}

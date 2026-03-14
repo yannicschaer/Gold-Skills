@@ -8,10 +8,12 @@ interface SkillsState {
   categories: SanitySkillCategory[]
   skills: SkillWithCategory[]
   ratings: SkillRating[]
+  memberRatings: SkillRating[]
   teamRatings: SkillRating[]
   loading: boolean
   fetchSkillCatalog: () => Promise<void>
   fetchMyRatings: (userId: string) => Promise<void>
+  fetchUserRatings: (userId: string) => Promise<void>
   fetchTeamRatings: () => Promise<void>
   upsertRating: (
     userId: string,
@@ -28,6 +30,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   categories: [],
   skills: [],
   ratings: [],
+  memberRatings: [],
   teamRatings: [],
   loading: false,
 
@@ -57,6 +60,14 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     if (data) set({ ratings: data as SkillRating[] })
   },
 
+  fetchUserRatings: async (userId: string) => {
+    const { data } = await supabase
+      .from('skill_ratings')
+      .select('*')
+      .eq('user_id', userId)
+    if (data) set({ memberRatings: data as SkillRating[] })
+  },
+
   fetchTeamRatings: async () => {
     const { data } = await supabase.from('skill_ratings').select('*')
     if (data) set({ teamRatings: data as SkillRating[] })
@@ -69,7 +80,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
         skill_id: skillId,
         current_level: currentLevel,
         target_level: targetLevel,
-      },
+      } as never,
       { onConflict: 'user_id,skill_id' },
     )
     if (error) throw error

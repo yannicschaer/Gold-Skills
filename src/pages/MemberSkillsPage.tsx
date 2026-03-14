@@ -1,47 +1,43 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useCallback, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { useSkillsStore } from '@/store/skills'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/database'
 
-export function TeamOverviewPage() {
+export function MemberSkillsPage() {
+  const { userId } = useParams<{ userId: string }>()
   const {
     categories,
     skills,
-    teamRatings,
+    memberRatings,
     loading,
     fetchSkillCatalog,
-    fetchTeamRatings,
+    fetchUserRatings,
   } = useSkillsStore()
 
-  const [members, setMembers] = useState<Profile[]>([])
+  const [member, setMember] = useState<Profile | null>(null)
 
   useEffect(() => {
     fetchSkillCatalog()
-    fetchTeamRatings()
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('is_active', true)
-      .order('full_name')
-      .then(({ data }) => {
-        if (data) setMembers(data as Profile[])
-      })
-  }, [fetchSkillCatalog, fetchTeamRatings])
-
-  const averages = useMemo(() => {
-    const map = new Map<string, { currentSum: number; targetSum: number; count: number }>()
-    for (const r of teamRatings) {
-      const entry = map.get(r.skill_id) ?? { currentSum: 0, targetSum: 0, count: 0 }
-      entry.currentSum += r.current_level
-      entry.targetSum += r.target_level
-      entry.count += 1
-      map.set(r.skill_id, entry)
+    if (userId) {
+      fetchUserRatings(userId)
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+        .then(({ data }) => {
+          if (data) setMember(data as Profile)
+        })
     }
-    return map
-  }, [teamRatings])
+  }, [userId, fetchSkillCatalog, fetchUserRatings])
 
-  if (loading) {
+  const getRating = useCallback(
+    (skillId: string) => memberRatings.find((r) => r.skill_id === skillId),
+    [memberRatings],
+  )
+
+  if (loading || !member) {
     return (
       <div className="flex justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
@@ -51,24 +47,17 @@ export function TeamOverviewPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Team-Übersicht</h1>
-
-      {/* Team Members */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Team-Mitglieder</h2>
-        <div className="flex flex-wrap gap-2">
-          {members.map((m) => (
-            <Link
-              key={m.id}
-              to={`/team/${m.id}`}
-              className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium
-                         bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-            >
-              {m.full_name || m.email}
-              <span className="ml-2 text-xs text-gray-400">{m.role}</span>
-            </Link>
-          ))}
-        </div>
+      <div className="mb-6">
+        <Link
+          to="/team"
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          &larr; Zurück zur Team-Übersicht
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900 mt-2">
+          {member.full_name || member.email}
+        </h1>
+        <p className="text-sm text-gray-500">{member.email}</p>
       </div>
 
       {categories.map((category) => {
@@ -90,40 +79,44 @@ export function TeamOverviewPage() {
                       Skill
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                      Ø Ist
+                      Ist-Level
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                      Ø Soll
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                      Ø Delta
+                      Soll-Level
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
-                      Antworten
+                      Delta
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {categorySkills.map((skill) => {
-                    const avg = averages.get(skill._id)
-                    const avgCurrent = avg ? avg.currentSum / avg.count : 0
-                    const avgTarget = avg ? avg.targetSum / avg.count : 0
-                    const avgDelta = avgTarget - avgCurrent
+                    const rating = getRating(skill._id)
+                    const current = rating?.current_level ?? 0
+                    const target = rating?.target_level ?? 0
+                    const delta = target - current
 
                     return (
                       <tr key={skill._id}>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {skill.title}
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {skill.title}
+                          </div>
+                          {skill.description && (
+                            <div className="text-xs text-gray-500">
+                              {skill.description}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
                               <div
                                 className="bg-blue-500 h-2 rounded-full"
-                                style={{ width: `${(avgCurrent / 5) * 100}%` }}
+                                style={{ width: `${(current / 5) * 100}%` }}
                               />
                             </div>
-                            <span className="w-8 text-right">{avgCurrent.toFixed(1)}</span>
+                            <span className="w-6 text-right">{current}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -131,25 +124,24 @@ export function TeamOverviewPage() {
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
                               <div
                                 className="bg-green-500 h-2 rounded-full"
-                                style={{ width: `${(avgTarget / 5) * 100}%` }}
+                                style={{ width: `${(target / 5) * 100}%` }}
                               />
                             </div>
-                            <span className="w-8 text-right">{avgTarget.toFixed(1)}</span>
+                            <span className="w-6 text-right">{target}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              avgDelta > 0
+                              delta > 0
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-green-100 text-green-800'
+                                : delta === 0
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
                             }`}
                           >
-                            {avgDelta > 0 ? `+${avgDelta.toFixed(1)}` : avgDelta.toFixed(1)}
+                            {delta > 0 ? `+${delta}` : delta}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 text-center">
-                          {avg?.count ?? 0}
                         </td>
                       </tr>
                     )

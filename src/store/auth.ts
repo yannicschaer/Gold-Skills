@@ -8,10 +8,21 @@ interface AuthState {
   session: Session | null
   profile: Profile | null
   loading: boolean
+  role: Profile['role'] | null
+  isAdmin: boolean
+  canEditSkills: boolean
   initialize: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
+}
+
+function deriveRoleFlags(role: Profile['role'] | null) {
+  return {
+    role,
+    isAdmin: role === 'admin',
+    canEditSkills: role === 'admin' || role === 'designer',
+  }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -19,6 +30,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   profile: null,
   loading: true,
+  role: null,
+  isAdmin: false,
+  canEditSkills: false,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -30,7 +44,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         .select('*')
         .eq('id', session.user.id)
         .single()
-      if (data) set({ profile: data as Profile })
+      if (data) {
+        const profile = data as Profile
+        set({ profile, ...deriveRoleFlags(profile.role) })
+      }
     }
 
     supabase.auth.onAuthStateChange((_event, session) => {
@@ -45,7 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
-    set({ user: null, session: null, profile: null })
+    set({ user: null, session: null, profile: null, ...deriveRoleFlags(null) })
   },
 
   fetchProfile: async (userId: string) => {
@@ -54,6 +71,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       .select('*')
       .eq('id', userId)
       .single()
-    if (data) set({ profile: data as Profile })
+    if (data) {
+      const profile = data as Profile
+      set({ profile, ...deriveRoleFlags(profile.role) })
+    }
   },
 }))
