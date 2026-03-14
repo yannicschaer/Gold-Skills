@@ -30,7 +30,7 @@ export function SkillRadarChart({ data }: Props) {
           tickLine={false}
         />
         <PolarRadiusAxis
-          domain={[0, 5]}
+          domain={[0, 10]}
           tickCount={6}
           tick={{ fill: 'var(--color-neutral-400)', fontSize: 10 }}
           axisLine={false}

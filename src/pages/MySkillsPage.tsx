@@ -188,7 +188,7 @@ export function MySkillsPage() {
               Skill-Radar
             </h2>
             <div className="bg-white rounded-[12px] border border-sand-200 p-[16px]">
-              <div className="aspect-square w-full mx-auto">
+              <div className="w-full mx-auto" style={{ height: 'min(60vh, 500px)' }}>
                 <SkillRadarChart data={radarData} />
               </div>
               {/* Legend */}

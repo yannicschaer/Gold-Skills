@@ -11,7 +11,7 @@ export function SkillStepper({ value, onChange, disabled }: Props) {
     if (value > 0) onChange((value - 1) as SkillLevel)
   }
   const increment = () => {
-    if (value < 5) onChange((value + 1) as SkillLevel)
+    if (value < 10) onChange((value + 1) as SkillLevel)
   }
 
   return (
@@ -32,7 +32,7 @@ export function SkillStepper({ value, onChange, disabled }: Props) {
       <button
         type="button"
         onClick={increment}
-        disabled={disabled || value >= 5}
+        disabled={disabled || value >= 10}
         className="flex items-center justify-center size-[28px] rounded-[6px] border border-sand-200 bg-white
                    font-body text-[14px] text-forest-950
                    hover:bg-sand-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
