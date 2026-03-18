@@ -74,6 +74,10 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   },
 
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {
+    // Clamp values to valid range 0-5
+    const clampedCurrent = Math.max(0, Math.min(5, Math.round(currentLevel)))
+    const clampedTarget = Math.max(0, Math.min(5, Math.round(targetLevel)))
+
     // Optimistic update first so UI reacts instantly
     const { ratings } = get()
     const existingIdx = ratings.findIndex(
@@ -84,8 +88,8 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       id: existingIdx >= 0 ? ratings[existingIdx].id : crypto.randomUUID(),
       user_id: userId,
       skill_id: skillId,
-      current_level: currentLevel as SkillRating['current_level'],
-      target_level: targetLevel as SkillRating['target_level'],
+      current_level: clampedCurrent as SkillRating['current_level'],
+      target_level: clampedTarget as SkillRating['target_level'],
       updated_at: new Date().toISOString(),
     }
     if (existingIdx >= 0) {
@@ -96,15 +100,15 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     set({ ratings: updated })
 
     // Persist to database
-    const { error } = await supabase.from('skill_ratings').upsert(
-      {
-        user_id: userId,
-        skill_id: skillId,
-        current_level: currentLevel,
-        target_level: targetLevel,
-      } as never,
-      { onConflict: 'user_id,skill_id' },
-    )
+    const payload: Record<string, unknown> = {
+      user_id: userId,
+      skill_id: skillId,
+      current_level: clampedCurrent,
+      target_level: clampedTarget,
+    }
+    const { error } = await supabase
+      .from('skill_ratings')
+      .upsert(payload as never, { onConflict: 'user_id,skill_id' })
     if (error) {
       // Rollback on failure
       set({ ratings })

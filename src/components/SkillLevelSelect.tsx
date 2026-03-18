@@ -2,17 +2,12 @@ import type { SkillLevel } from '@/types/database'
 import { useContentStore } from '@/store/content'
 
 const DEFAULT_LEVELS: { value: SkillLevel; label: string }[] = [
-  { value: 0, label: '0 - Keine Erfahrung' },
-  { value: 1, label: '1 - Anfänger' },
-  { value: 2, label: '2 - Grundlagen' },
-  { value: 3, label: '3 - Fortgeschritten' },
-  { value: 4, label: '4 - Solide Kenntnisse' },
-  { value: 5, label: '5 - Kompetent' },
-  { value: 6, label: '6 - Erfahren' },
-  { value: 7, label: '7 - Fortgeschritten+' },
-  { value: 8, label: '8 - Profi' },
-  { value: 9, label: '9 - Experte' },
-  { value: 10, label: '10 - Meister' },
+  { value: 0, label: '0 - Keine Kenntnisse' },
+  { value: 1, label: '1 - Grundlagen' },
+  { value: 2, label: '2 - Fortgeschritten' },
+  { value: 3, label: '3 - Kompetent' },
+  { value: 4, label: '4 - Experte' },
+  { value: 5, label: '5 - Meister' },
 ]
 
 interface Props {
