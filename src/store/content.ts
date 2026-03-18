@@ -20,30 +20,38 @@ const LOGIN_PAGE_QUERY = `*[_type == "loginPage"][0]{
   splashImage{ asset->{ url } }
 }`
 
+let pendingFetches = 0
+
 export const useContentStore = create<ContentState>((set) => ({
   appSettings: null,
   loginPage: null,
   contentLoading: false,
 
   fetchAppSettings: async () => {
+    pendingFetches++
     set({ contentLoading: true })
     try {
       const data = await sanityClient.fetch<SanityAppSettings>(APP_SETTINGS_QUERY)
-      set({ appSettings: data, contentLoading: false })
+      set({ appSettings: data })
     } catch (err) {
       console.error('Failed to fetch app settings from Sanity:', err)
-      set({ contentLoading: false })
+    } finally {
+      pendingFetches--
+      if (pendingFetches === 0) set({ contentLoading: false })
     }
   },
 
   fetchLoginPage: async () => {
+    pendingFetches++
     set({ contentLoading: true })
     try {
       const data = await sanityClient.fetch<SanityLoginPage>(LOGIN_PAGE_QUERY)
-      set({ loginPage: data, contentLoading: false })
+      set({ loginPage: data })
     } catch (err) {
       console.error('Failed to fetch login page from Sanity:', err)
-      set({ contentLoading: false })
+    } finally {
+      pendingFetches--
+      if (pendingFetches === 0) set({ contentLoading: false })
     }
   },
 }))

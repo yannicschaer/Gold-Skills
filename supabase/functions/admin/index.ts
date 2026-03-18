@@ -75,15 +75,22 @@ Deno.serve(async (req: Request) => {
       if (body.userId === user.id) {
         return errorResponse("Cannot change your own role", 400);
       }
-      // Prevent demoting the last admin
+      // Prevent demoting the last admin — only check if target user is currently an admin
       if (body.role !== "admin") {
-        const { count } = await supabaseAdmin
+        const { data: targetProfile } = await supabaseAdmin
           .from("profiles")
-          .select("*", { count: "exact", head: true })
-          .eq("role", "admin")
-          .eq("is_active", true);
-        if (count !== null && count <= 1) {
-          return errorResponse("Cannot demote the last admin", 400);
+          .select("role")
+          .eq("id", body.userId)
+          .single();
+        if (targetProfile?.role === "admin") {
+          const { count } = await supabaseAdmin
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .eq("role", "admin")
+            .eq("is_active", true);
+          if (count !== null && count <= 1) {
+            return errorResponse("Cannot demote the last admin", 400);
+          }
         }
       }
       const { error } = await supabaseAdmin
@@ -99,10 +106,11 @@ Deno.serve(async (req: Request) => {
       if (body.userId === user.id) {
         return errorResponse("Cannot deactivate yourself", 400);
       }
-      await supabaseAdmin
+      const { error } = await supabaseAdmin
         .from("profiles")
         .update({ is_active: false })
         .eq("id", body.userId);
+      if (error) return errorResponse(error.message, 500);
       await supabaseAdmin.auth.admin.updateUserById(body.userId, {
         ban_duration: "876600h",
       });

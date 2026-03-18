@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    set({ session, user: session?.user ?? null, loading: false })
+    set({ session, user: session?.user ?? null })
 
     if (session?.user) {
       const profile = await ensureProfile(session.user)
@@ -70,6 +70,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ profile, ...deriveRoleFlags(profile.role) })
       }
     }
+    // Only set loading false AFTER profile is loaded to prevent premature redirects in RoleRoute
+    set({ loading: false })
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       set({ session, user: session?.user ?? null })

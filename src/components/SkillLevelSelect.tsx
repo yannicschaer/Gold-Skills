@@ -19,7 +19,7 @@ interface Props {
 export function SkillLevelSelect({ value, onChange, disabled }: Props) {
   const { appSettings } = useContentStore()
 
-  const levels = appSettings?.skillLevels
+  const levels = appSettings?.skillLevels?.length
     ? appSettings.skillLevels.map((sl) => ({
         value: sl.value as SkillLevel,
         label: `${sl.value} - ${sl.label}`,

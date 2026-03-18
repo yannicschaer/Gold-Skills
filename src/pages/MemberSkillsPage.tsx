@@ -18,6 +18,7 @@ export function MemberSkillsPage() {
   const [member, setMember] = useState<Profile | null>(null)
 
   useEffect(() => {
+    setMember(null)
     fetchSkillCatalog()
     if (userId) {
       fetchUserRatings(userId)
