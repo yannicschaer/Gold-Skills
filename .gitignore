@@ -30,3 +30,9 @@ dist-ssr
 
 # Sanity
 sanity/dist/
+
+# Design (Ordner bleibt sichtbar, Inhalt wird ignoriert)
+Frontend Design Figma/*
+!Frontend Design Figma/.gitkeep
+!Frontend Design Figma/design-tokens.css
+.vercel

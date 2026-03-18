@@ -1,1 +1,123 @@
 @import "tailwindcss";
+@import "../Frontend Design Figma/design-tokens.css";
+
+/* ===========================
+   @font-face — Brand Fonts
+   =========================== */
+
+/* Maison Neue — Book (400) */
+@font-face {
+  font-family: 'Maison Neue';
+  src: url('../assets/fonts/Maison Neue MG [WEB]/MaisonNeueWEB-Book.woff2') format('woff2'),
+       url('../assets/fonts/Maison Neue MG [WEB]/MaisonNeueWEB-Book.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Maison Neue — Demi (600) */
+@font-face {
+  font-family: 'Maison Neue';
+  src: url('../assets/fonts/Maison Neue MG [WEB]/MaisonNeueWEB-Demi.woff2') format('woff2'),
+       url('../assets/fonts/Maison Neue MG [WEB]/MaisonNeueWEB-Demi.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Tiempos Headline — Light (300) */
+@font-face {
+  font-family: 'Tiempos Headline';
+  src: url('../assets/fonts/Tiempos/tiempos-headline-web-light.woff2') format('woff2'),
+       url('../assets/fonts/Tiempos/tiempos-headline-web-light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Tiempos Headline — Medium (500) */
+@font-face {
+  font-family: 'Tiempos Headline';
+  src: url('../assets/fonts/Tiempos/tiempos-headline-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Map design tokens to Tailwind v4 theme */
+@theme {
+  --color-sand-50: var(--color-sand-50);
+  --color-sand-100: var(--color-sand-100);
+  --color-sand-200: var(--color-sand-200);
+  --color-sand-300: var(--color-sand-300);
+  --color-sand-400: var(--color-sand-400);
+  --color-sand-500: var(--color-sand-500);
+  --color-sand-600: var(--color-sand-600);
+  --color-sand-700: var(--color-sand-700);
+  --color-sand-800: var(--color-sand-800);
+  --color-sand-900: var(--color-sand-900);
+  --color-sand-950: var(--color-sand-950);
+
+  --color-forest-50: var(--color-forest-50);
+  --color-forest-100: var(--color-forest-100);
+  --color-forest-200: var(--color-forest-200);
+  --color-forest-300: var(--color-forest-300);
+  --color-forest-400: var(--color-forest-400);
+  --color-forest-500: var(--color-forest-500);
+  --color-forest-600: var(--color-forest-600);
+  --color-forest-700: var(--color-forest-700);
+  --color-forest-800: var(--color-forest-800);
+  --color-forest-900: var(--color-forest-900);
+  --color-forest-950: var(--color-forest-950);
+
+  --color-mint-50: var(--color-mint-50);
+  --color-mint-100: var(--color-mint-100);
+  --color-mint-200: var(--color-mint-200);
+  --color-mint-300: var(--color-mint-300);
+  --color-mint-400: var(--color-mint-400);
+  --color-mint-500: var(--color-mint-500);
+  --color-mint-600: var(--color-mint-600);
+  --color-mint-700: var(--color-mint-700);
+  --color-mint-800: var(--color-mint-800);
+  --color-mint-900: var(--color-mint-900);
+  --color-mint-950: var(--color-mint-950);
+
+  --color-coral-50: var(--color-coral-50);
+  --color-coral-100: var(--color-coral-100);
+  --color-coral-200: var(--color-coral-200);
+  --color-coral-300: var(--color-coral-300);
+  --color-coral-400: var(--color-coral-400);
+  --color-coral-500: var(--color-coral-500);
+  --color-coral-600: var(--color-coral-600);
+  --color-coral-700: var(--color-coral-700);
+  --color-coral-800: var(--color-coral-800);
+  --color-coral-900: var(--color-coral-900);
+  --color-coral-950: var(--color-coral-950);
+
+  --color-plum-50: var(--color-plum-50);
+  --color-plum-100: var(--color-plum-100);
+  --color-plum-200: var(--color-plum-200);
+  --color-plum-300: var(--color-plum-300);
+  --color-plum-400: var(--color-plum-400);
+  --color-plum-500: var(--color-plum-500);
+  --color-plum-600: var(--color-plum-600);
+  --color-plum-700: var(--color-plum-700);
+  --color-plum-800: var(--color-plum-800);
+  --color-plum-900: var(--color-plum-900);
+  --color-plum-950: var(--color-plum-950);
+
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral-200: var(--color-neutral-200);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-900: var(--color-neutral-900);
+  --color-neutral-950: var(--color-neutral-950);
+
+  --font-heading: 'Tiempos Headline', Georgia, serif;
+  --font-body: 'Maison Neue', system-ui, -apple-system, sans-serif;
+}

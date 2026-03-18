@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="decoration">
+<circle id="circle-lg" opacity="0.4" cx="160" cy="160" r="139.25" stroke="var(--stroke-0, #225759)" stroke-width="1.5"/>
+<circle id="circle-md" opacity="0.3" cx="160" cy="160" r="99.25" stroke="var(--stroke-0, #2D7476)" stroke-width="1.5"/>
+<circle id="circle-accent" opacity="0.15" cx="240" cy="90" r="60" fill="var(--fill-0, #6ADC89)"/>
+<circle id="circle-sm" opacity="0.6" cx="48" cy="148" r="8" fill="var(--fill-0, #6ADC89)"/>
+<circle id="circle-dot" opacity="0.5" cx="264" cy="204" r="4" fill="var(--fill-0, #9CE8B0)"/>
+</g>
+</svg>

@@ -1,14 +1,151 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
+import { useContentStore } from '@/store/content'
+
+const DEFAULT_FEATURE_PILLS = ['Skill-Matrix', 'Team-Übersicht', 'Radar-Charts', 'Ist vs. Soll']
+
+interface Dot {
+  x: number
+  y: number
+  r: number
+  vx: number
+  vy: number
+  opacity: number
+  color: string
+}
+
+function AnimatedRadar() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const dotsRef = useRef<Dot[]>([])
+  const frameRef = useRef<number>(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const size = 320
+    canvas.width = size
+    canvas.height = size
+    const cx = size / 2
+    const cy = size / 2
+
+    // Initialize dots at random positions inside the outer ring
+    const ringRadius = 139.25
+    const rng = () => (Math.random() - 0.5) * 0.3
+    function randomInsideRing(dotR: number) {
+      const angle = Math.random() * Math.PI * 2
+      const dist = Math.random() * (ringRadius - dotR)
+      return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist }
+    }
+    const dotDefs: { r: number; opacity: number; color: string }[] = [
+      { r: 8, opacity: 0.6, color: '#6ADC89' },
+      { r: 4, opacity: 0.5, color: '#9CE8B0' },
+      { r: 5, opacity: 0.45, color: '#6ADC89' },
+      { r: 6, opacity: 0.35, color: '#9CE8B0' },
+      { r: 3, opacity: 0.5, color: '#6ADC89' },
+      { r: 4, opacity: 0.4, color: '#9CE8B0' },
+      { r: 5, opacity: 0.3, color: '#6ADC89' },
+    ]
+    dotsRef.current = dotDefs.map((d) => {
+      const pos = randomInsideRing(d.r)
+      return { ...d, ...pos, vx: rng(), vy: rng() }
+    })
+
+    function draw() {
+      if (!ctx) return
+      ctx.clearRect(0, 0, size, size)
+
+      // Draw concentric circles (grid)
+      ctx.lineWidth = 1.5
+      ctx.strokeStyle = '#225759'
+      ctx.globalAlpha = 0.4
+      ctx.beginPath()
+      ctx.arc(cx, cy, 139.25, 0, Math.PI * 2)
+      ctx.stroke()
+
+      ctx.strokeStyle = '#2D7476'
+      ctx.globalAlpha = 0.3
+      ctx.beginPath()
+      ctx.arc(cx, cy, 99.25, 0, Math.PI * 2)
+      ctx.stroke()
+
+      // Draw accent glow (stationary)
+      ctx.globalAlpha = 0.15
+      ctx.fillStyle = '#6ADC89'
+      ctx.beginPath()
+      ctx.arc(240, 90, 60, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Animate dots — constrained inside the outer ring
+      for (const dot of dotsRef.current) {
+        dot.x += dot.vx
+        dot.y += dot.vy
+
+        // Distance from center
+        const dx = dot.x - cx
+        const dy = dot.y - cy
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const maxDist = ringRadius - dot.r
+
+        if (dist > maxDist) {
+          // Normalize the direction from center to dot
+          const nx = dx / dist
+          const ny = dy / dist
+          // Push dot back inside the ring
+          dot.x = cx + nx * maxDist
+          dot.y = cy + ny * maxDist
+          // Reflect velocity off the ring boundary (inward)
+          const dotVn = dot.vx * nx + dot.vy * ny
+          dot.vx -= 2 * dotVn * nx
+          dot.vy -= 2 * dotVn * ny
+        }
+
+        ctx.globalAlpha = dot.opacity
+        ctx.fillStyle = dot.color
+        ctx.beginPath()
+        ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      ctx.globalAlpha = 1
+      frameRef.current = requestAnimationFrame(draw)
+    }
+
+    frameRef.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(frameRef.current)
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="size-full"
+      style={{ width: 320, height: 320 }}
+    />
+  )
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuthStore()
+  const { signIn, signInWithGoogle } = useAuthStore()
+  const { loginPage, fetchLoginPage } = useContentStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchLoginPage()
+  }, [fetchLoginPage])
+
+  const heading = loginPage?.heading ?? 'Willkommen bei Gold Skills'
+  const subtitle = loginPage?.subtitle ?? 'Melde dich an, um deine Skills zu verwalten und die Teamübersicht einzusehen.'
+  const emailPlaceholder = loginPage?.emailPlaceholder ?? 'name@goldinteractive.ch'
+  const splashTitle = loginPage?.splashTitle ?? 'Gold Skills'
+  const splashSubtitle = loginPage?.splashSubtitle ?? 'Erfasse und visualisiere die Skills deines Teams — transparent und einfach.'
+  const featurePills = loginPage?.featurePills ?? DEFAULT_FEATURE_PILLS
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -25,61 +162,158 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <div>
-          <h1 className="text-3xl font-bold text-center text-gray-900">
-            Gold Skills
-          </h1>
-          <p className="mt-2 text-center text-gray-600">
-            Team Skills Matrix
-          </p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
+    <div className="flex min-h-screen bg-white">
+      {/* Left: Login Form */}
+      <div className="flex flex-1 flex-col items-center justify-center overflow-clip px-6 py-12 sm:p-[80px]">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-[32px] w-full max-w-[400px]">
+          {/* Logo */}
+          <div className="flex items-center justify-center size-[48px] bg-forest-950 rounded-[8px] overflow-clip">
+            <img src="/logo-gold-dark.svg" alt="Gold" className="w-[34px] h-[24px]" />
+          </div>
+
+          {/* Heading */}
+          <div className="flex flex-col gap-[8px]">
+            <h1 className="font-heading text-[28px] font-medium leading-[1.3] tracking-[-0.2px] text-forest-950">
+              {heading}
+            </h1>
+            <p className="font-body text-[16px] leading-[1.5] text-neutral-700">
+              {subtitle}
+            </p>
+          </div>
+
+          {/* Google Login */}
+          <button
+            type="button"
+            onClick={() => signInWithGoogle()}
+            className="flex items-center justify-center gap-[12px] w-full rounded-[8px] border border-neutral-200 bg-white py-[12px]
+                       font-body text-[16px] leading-[1.5] text-forest-950
+                       hover:bg-sand-50 focus:outline-none focus:ring-2 focus:ring-mint-400 focus:ring-offset-2
+                       transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Mit Google anmelden
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-[16px]">
+            <div className="flex-1 h-px bg-neutral-200" />
+            <span className="font-body text-[14px] text-neutral-400">oder</span>
+            <div className="flex-1 h-px bg-neutral-200" />
+          </div>
+
+          {/* Fields */}
+          <div className="flex flex-col gap-[20px]">
+            {error && (
+              <div className="bg-coral-50 border border-coral-200 text-coral-600 px-[14px] py-[12px] rounded-[8px] font-body text-[14px]">
+                {error}
+              </div>
+            )}
+
+            {/* E-Mail */}
+            <div className="flex flex-col gap-[6px]">
+              <label
+                htmlFor="email"
+                className="font-body text-[14px] leading-[1.5] tracking-[0.2px] text-neutral-700"
+              >
+                E-Mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={emailPlaceholder}
+                className="w-full rounded-[8px] border border-neutral-200 bg-white px-[14px] py-[12px]
+                           font-body text-[16px] leading-[1.5] text-forest-950
+                           placeholder:text-neutral-400
+                           focus:outline-none focus:border-mint-400 focus:ring-1 focus:ring-mint-400"
+              />
             </div>
-          )}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              E-Mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                         focus:border-blue-500 focus:ring-blue-500"
-            />
+
+            {/* Passwort */}
+            <div className="flex flex-col gap-[6px]">
+              <label
+                htmlFor="password"
+                className="font-body text-[14px] leading-[1.5] tracking-[0.2px] text-neutral-700"
+              >
+                Passwort
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-[8px] border border-neutral-200 bg-white px-[14px] py-[12px]
+                           font-body text-[16px] leading-[1.5] text-forest-950
+                           placeholder:text-neutral-400
+                           focus:outline-none focus:border-mint-400 focus:ring-1 focus:ring-mint-400"
+              />
+            </div>
+
+            {/* Passwort vergessen */}
+            <button
+              type="button"
+              className="self-start font-body text-[14px] leading-[1.5] text-neutral-500 hover:text-forest-950 hover:underline"
+            >
+              Passwort vergessen?
+            </button>
           </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Passwort
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                         focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent
-                       rounded-md shadow-sm text-sm font-medium text-white bg-blue-600
-                       hover:bg-blue-700 focus:outline-none focus:ring-2
-                       focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full rounded-[8px] bg-mint-400 py-[14px]
+                       font-body text-[16px] leading-[1.5] tracking-[0.2px] text-forest-950
+                       hover:bg-mint-500 focus:outline-none focus:ring-2
+                       focus:ring-mint-400 focus:ring-offset-2
+                       disabled:opacity-50 transition-colors"
           >
             {loading ? 'Anmelden...' : 'Anmelden'}
           </button>
         </form>
+      </div>
+
+      {/* Right: Splash Panel */}
+      <div className="hidden lg:flex flex-1 flex-col items-center justify-center
+                      bg-forest-950 rounded-tl-[24px] rounded-bl-[24px] p-[80px] overflow-clip">
+        <div className="flex flex-col items-center gap-[32px] w-[480px]">
+          {/* Decoration */}
+          <div className="size-[320px]">
+            <AnimatedRadar />
+          </div>
+
+          {/* Title */}
+          <h2 className="font-heading text-[36px] font-medium leading-[1.2] tracking-[-0.3px] text-white text-center">
+            {splashTitle}
+          </h2>
+
+          {/* Subtitle */}
+          <p className="font-body text-[18px] leading-[1.5] text-sand-200 text-center">
+            {splashSubtitle}
+          </p>
+
+          {/* Feature Pills */}
+          <div className="flex flex-wrap justify-center gap-[8px]">
+            {featurePills.map((label: string) => (
+              <span
+                key={label}
+                className="border border-forest-700 rounded-[999px] px-[14px] py-[6px]
+                           font-body text-[12px] leading-[1.5] text-sand-200 opacity-70"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

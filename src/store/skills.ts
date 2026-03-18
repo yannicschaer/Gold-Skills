@@ -8,10 +8,12 @@ interface SkillsState {
   categories: SanitySkillCategory[]
   skills: SkillWithCategory[]
   ratings: SkillRating[]
+  memberRatings: SkillRating[]
   teamRatings: SkillRating[]
   loading: boolean
   fetchSkillCatalog: () => Promise<void>
   fetchMyRatings: (userId: string) => Promise<void>
+  fetchUserRatings: (userId: string) => Promise<void>
   fetchTeamRatings: () => Promise<void>
   upsertRating: (
     userId: string,
@@ -28,6 +30,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   categories: [],
   skills: [],
   ratings: [],
+  memberRatings: [],
   teamRatings: [],
   loading: false,
 
@@ -57,42 +60,59 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     if (data) set({ ratings: data as SkillRating[] })
   },
 
+  fetchUserRatings: async (userId: string) => {
+    const { data } = await supabase
+      .from('skill_ratings')
+      .select('*')
+      .eq('user_id', userId)
+    if (data) set({ memberRatings: data as SkillRating[] })
+  },
+
   fetchTeamRatings: async () => {
     const { data } = await supabase.from('skill_ratings').select('*')
     if (data) set({ teamRatings: data as SkillRating[] })
   },
 
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {
-    const { error } = await supabase.from('skill_ratings').upsert(
-      {
-        user_id: userId,
-        skill_id: skillId,
-        current_level: currentLevel,
-        target_level: targetLevel,
-      },
-      { onConflict: 'user_id,skill_id' },
-    )
-    if (error) throw error
+    // Clamp values to valid range 0-5
+    const clampedCurrent = Math.max(0, Math.min(5, Math.round(currentLevel)))
+    const clampedTarget = Math.max(0, Math.min(5, Math.round(targetLevel)))
 
-    // Refresh local ratings
+    // Optimistic update first so UI reacts instantly
     const { ratings } = get()
-    const existing = ratings.findIndex(
+    const existingIdx = ratings.findIndex(
       (r) => r.user_id === userId && r.skill_id === skillId,
     )
     const updated = [...ratings]
     const newRating: SkillRating = {
-      id: existing >= 0 ? ratings[existing].id : crypto.randomUUID(),
+      id: existingIdx >= 0 ? ratings[existingIdx].id : crypto.randomUUID(),
       user_id: userId,
       skill_id: skillId,
-      current_level: currentLevel as SkillRating['current_level'],
-      target_level: targetLevel as SkillRating['target_level'],
+      current_level: clampedCurrent as SkillRating['current_level'],
+      target_level: clampedTarget as SkillRating['target_level'],
       updated_at: new Date().toISOString(),
     }
-    if (existing >= 0) {
-      updated[existing] = newRating
+    if (existingIdx >= 0) {
+      updated[existingIdx] = newRating
     } else {
       updated.push(newRating)
     }
     set({ ratings: updated })
+
+    // Persist to database
+    const payload: Record<string, unknown> = {
+      user_id: userId,
+      skill_id: skillId,
+      current_level: clampedCurrent,
+      target_level: clampedTarget,
+    }
+    const { error } = await supabase
+      .from('skill_ratings')
+      .upsert(payload as never, { onConflict: 'user_id,skill_id' })
+    if (error) {
+      // Rollback on failure
+      set({ ratings })
+      throw error
+    }
   },
 }))
