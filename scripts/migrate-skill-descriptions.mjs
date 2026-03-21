@@ -16,24 +16,24 @@ const client = createClient({
 })
 
 const descriptions = {
-  'Research-Prozess planen': 'Fähigkeit, den passenden Research-Ansatz für ein Projekt zu wählen, Methoden gezielt auszuwählen und in einen strukturierten Ablauf zu bringen. Berücksichtigt Ziele, Zeit, Budget und Stakeholder.',
+  'Research Prozess planen': 'Fähigkeit, den passenden Research-Ansatz für ein Projekt zu wählen, Methoden gezielt auszuwählen und in einen strukturierten Ablauf zu bringen. Berücksichtigt Ziele, Zeit, Budget und Stakeholder.',
   'Nutzerinterviews': 'Durchführung von Gesprächen mit Nutzenden, um deren Bedürfnisse, Erfahrungen und Erwartungen zu verstehen. Umfasst Vorbereitung, Moderation und Nachbereitung. Die Anwendung von unstrukturierten und strukturierten Interviewformen wird bewusst gewählt.',
   'Desk Research (Konkurrenzanalyse etc.)': 'Systematische Analyse bestehender Quellen wie Marktstudien, Konkurrenz-Websites oder Fachartikeln, um relevante Informationen für das Projekt abzuleiten.',
   'Umfragen': 'Erstellung und Durchführung strukturierter Fragebögen zur quantitativen Erhebung von Nutzermeinungen oder -verhalten. Auswertung und Einordnung der entsprechenden Daten sowie das Ableiten von Erkenntnissen.',
   'Beobachtungen': 'Systematisches Beobachten (Contextual Inquiries) von Nutzer:innen in ihrem Kontext, um Verhalten, Routinen und Probleme zu identifizieren.',
   'Analytics (GTM etc.)': 'Nutzung von Tracking- und Analysetools (z. B. Google Analytics, GTM), um Nutzerverhalten datengetrieben zu verstehen und zu bewerten.',
   'Workshops (Research Phase)': 'Gemeinsame Sessions mit Stakeholdern oder Nutzergruppen, um Wissen zu sammeln, Hypothesen zu prüfen oder Anforderungen zu schärfen.',
-  'Brand- und Strategierecherche (Vision, Mission, etc.)': 'Analyse von Markenwerten, Vision, Mission und strategischen Zielen als Grundlage für Designentscheidungen und konsistente Nutzererlebnisse.',
+  'Brand- und Strategie Research (Vision, Mission, etc.)': 'Analyse von Markenwerten, Vision, Mission und strategischen Zielen als Grundlage für Designentscheidungen und konsistente Nutzererlebnisse.',
   'Synthese': 'Zusammenführung und Verdichtung von Research-Ergebnissen, um Muster, Insights und Handlungsempfehlungen abzuleiten.',
-  'Business- und User-Goals': 'Verständnis und Abgleich von Geschäftszielen mit den Bedürfnissen der Nutzer:innen, um eine tragfähige UX-Strategie zu entwickeln.',
+  'Business- und User Goals': 'Verständnis und Abgleich von Geschäftszielen mit den Bedürfnissen der Nutzer:innen, um eine tragfähige UX-Strategie zu entwickeln.',
   'Informationsarchitektur': 'Strukturierung und Organisation von Inhalten, Navigation und Interaktionsmöglichkeiten, sodass Informationen leicht auffindbar sind. Die Informationsarchitektur kann begründet werden und wurde evidenzbasiert erarbeitet.',
   'Workshops (Konzeptions-Phase)': 'Gemeinsame Entwicklung von Ideen, Konzepten oder Lösungsansätzen mit Stakeholdern und Teammitgliedern. Befindet sich mehr im Lösungsbereich, als im Research-Teil.',
   'Use-Cases und Szenarien': 'Beschreibung typischer Anwendungsfälle und Nutzungsszenarien, um Anforderungen greifbar zu machen.',
-  'User Flows & User Story Maps': 'Darstellung der einzelnen Schritte, die Nutzer:innen durchlaufen, um ein Ziel im System zu erreichen. Umfasst generell die Erarbeitung von User Journeys/User Story Maps etc.',
-  'Requirements-Engineering': 'Systematische Erhebung, Dokumentation und Priorisierung von Anforderungen als Grundlage für die Produktentwicklung. Dies geschieht in enger Zusammenarbeit mit den Tech-Leads, Entwicklern und/oder Projektleitern.',
-  'UX-Vision erarbeiten': 'Definition eines langfristigen Zielbilds für die Nutzererfahrung, das als Leitlinie für Designentscheidungen dient. Deckt sowohl Benutzer- als auch Geschäftsziele ab.',
+  'User Flows': 'Darstellung der einzelnen Schritte, die Nutzer:innen durchlaufen, um ein Ziel im System zu erreichen. Umfasst generell die Erarbeitung von User Journeys/User Story Maps etc.',
+  'Requirements Engineering': 'Systematische Erhebung, Dokumentation und Priorisierung von Anforderungen als Grundlage für die Produktentwicklung. Dies geschieht in enger Zusammenarbeit mit den Tech-Leads, Entwicklern und/oder Projektleitern.',
+  'UX Vision erarbeiten': 'Definition eines langfristigen Zielbilds für die Nutzererfahrung, das als Leitlinie für Designentscheidungen dient. Deckt sowohl Benutzer- als auch Geschäftsziele ab.',
   'Wireframes': 'Erstellung schematischer Darstellungen zur Visualisierung von Strukturen, Layouts und Abläufen ohne Detaildesign. Geschieht oft zu Beginn des Designprozesses und dient unter anderem als Grundlage einer fundierten Informationsarchitektur.',
-  'UI-Design': 'Gestaltung visueller Oberflächen mit Fokus auf Ästhetik, Konsistenz, Benutzerfreundlichkeit und Markenidentität. Die Designentscheidungen spiegeln die im Vorfeld definierte UX-Vision/Strategie. Entscheidungen werden bewusst getroffen und können erläutert werden.',
+  'UI Design': 'Gestaltung visueller Oberflächen mit Fokus auf Ästhetik, Konsistenz, Benutzerfreundlichkeit und Markenidentität. Die Designentscheidungen spiegeln die im Vorfeld definierte UX-Vision/Strategie. Entscheidungen werden bewusst getroffen und können erläutert werden.',
   'Design Systems nutzen & pflegen': 'Anwendung, Dokumentation und Weiterentwicklung von Designsystemen (Komponenten, Patterns, Guidelines).',
   'Figma Anwendung': 'Effiziente und sichere Nutzung von Figma für Design, Prototyping und Zusammenarbeit im Team.',
   'Accessibility': 'Berücksichtigung von Barrierefreiheit in Design und Umsetzung, damit Produkte inklusiv nutzbar sind.',
@@ -74,7 +74,7 @@ async function run() {
   let notFound = []
 
   for (const [title, description] of Object.entries(descriptions)) {
-    const skill = skills.find((s) => s.title.trim() === title.trim())
+    const skill = skills.find((s) => s.title?.trim() === title.trim())
     if (!skill) {
       notFound.push(title)
       continue
