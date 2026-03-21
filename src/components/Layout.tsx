@@ -33,11 +33,11 @@ export function Layout() {
     : profile?.email?.slice(0, 2).toUpperCase() ?? ''
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex h-screen overflow-hidden bg-white">
       <Sidebar />
 
       {/* Main */}
-      <div className="flex flex-1 flex-col min-w-0 bg-sand-50">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0 bg-sand-50">
         {/* Topbar */}
         <header className="flex items-center justify-between bg-white border-b border-sand-200 px-[32px] h-[64px]">
           <div className="flex items-center gap-[8px]">
