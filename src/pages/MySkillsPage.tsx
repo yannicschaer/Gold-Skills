@@ -49,6 +49,14 @@ function SkillDrawer({
   skill: SkillWithCategory
   onClose: () => void
 }) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
     <>
       {/* Backdrop */}
@@ -130,8 +138,6 @@ export function MySkillsPage() {
   const toggleCategory = (categoryId: string) => {
     setCollapsed((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }))
   }
-
-  const drawerOpen = selectedSkill !== null
 
   // Build radar data aggregated by category
   const radarData = categories
@@ -238,23 +244,15 @@ export function MySkillsPage() {
                 {!isCollapsed && (
                   <div className="bg-white rounded-b-[8px] border border-t-0 border-sand-200 overflow-hidden">
                     {/* Column headers */}
-                    {!drawerOpen && (
-                      <div className="flex items-center gap-[16px] pl-[12px] pr-[12px] py-[4px] font-body text-[12px] text-neutral-500 border-b border-sand-200">
-                        <span className="flex-1 min-w-0">Skill</span>
-                        <span className="shrink-0 w-[88px]">Ist</span>
-                        <span className="shrink-0 w-[120px]" />
-                        <span className="shrink-0 w-[24px]" />
-                        <span className="shrink-0 w-[88px]">Soll</span>
-                        <span className="shrink-0 w-[120px]" />
-                        <span className="shrink-0 w-[60px]">Delta</span>
-                      </div>
-                    )}
-                    {/* Column header compact */}
-                    {drawerOpen && (
-                      <div className="flex items-center pl-[12px] pr-[12px] py-[4px] font-body text-[12px] text-neutral-500 border-b border-sand-200">
-                        <span>Skill</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-[16px] pl-[12px] pr-[12px] py-[4px] font-body text-[12px] text-neutral-500 border-b border-sand-200">
+                      <span className="flex-1 min-w-0">Skill</span>
+                      <span className="shrink-0 w-[88px]">Ist</span>
+                      <span className="shrink-0 w-[120px]" />
+                      <span className="shrink-0 w-[24px]" />
+                      <span className="shrink-0 w-[88px]">Soll</span>
+                      <span className="shrink-0 w-[120px]" />
+                      <span className="shrink-0 w-[60px]">Delta</span>
+                    </div>
 
                     {categorySkills.map((skill, idx) => {
                       const rating = getRating(skill._id)
@@ -262,37 +260,13 @@ export function MySkillsPage() {
                       const target = rating?.target_level ?? 0
                       const delta = current - target
                       const isLast = idx === categorySkills.length - 1
-                      const isSelected = selectedSkill?._id === skill._id
 
-                      if (drawerOpen) {
-                        // Compact row: just skill name
-                        return (
-                          <button
-                            key={skill._id}
-                            type="button"
-                            onClick={() => setSelectedSkill(skill)}
-                            className={`flex items-center w-full pl-[12px] pr-[12px] py-[8px] text-left transition-colors ${
-                              isLast ? '' : 'border-b border-sand-200'
-                            } ${
-                              isSelected
-                                ? 'bg-sand-50'
-                                : 'hover:bg-sand-50'
-                            }`}
-                          >
-                            <span className="font-body text-[12px] leading-[1.5] text-forest-950 truncate">
-                              {skill.title}
-                            </span>
-                          </button>
-                        )
-                      }
-
-                      // Full row with stepper, progress, delta
                       return (
                         <button
                           key={skill._id}
                           type="button"
                           onClick={() => setSelectedSkill(skill)}
-                          className={`flex items-center gap-[16px] w-full pl-[12px] pr-[12px] py-[8px] text-left hover:bg-sand-50 transition-colors ${
+                          className={`flex items-center gap-[16px] w-full pl-[12px] pr-[12px] py-[8px] text-left hover:bg-sand-50 transition-colors cursor-pointer ${
                             isLast ? '' : 'border-b border-sand-200'
                           }`}
                         >
