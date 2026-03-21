@@ -53,11 +53,37 @@ function SkillDrawer({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-[24px]">
-          <div className="flex flex-col items-center justify-center h-[400px] rounded-[8px] border border-dashed border-sand-200 bg-neutral-50">
-            <span className="font-body text-[14px] text-neutral-500">
-              Content Area
+        <div className="flex-1 overflow-auto p-[24px] flex flex-col gap-[24px]">
+          {/* Description */}
+          {skill.description ? (
+            <p className="font-body text-[14px] leading-[1.7] text-forest-950">
+              {skill.description}
+            </p>
+          ) : (
+            <p className="font-body text-[14px] text-neutral-400 italic">
+              Keine Beschreibung vorhanden.
+            </p>
+          )}
+
+          {/* Level Legend */}
+          <div className="flex flex-col gap-[2px]">
+            <span className="font-body text-[12px] font-semibold text-neutral-400 uppercase tracking-[0.5px] mb-[6px]">
+              Skill-Level
             </span>
+            {[
+              { level: 0, label: 'Keine Erfahrung', sub: 'nie gehört', bg: 'bg-neutral-100', text: 'text-neutral-500' },
+              { level: 1, label: 'Anfänger', sub: 'gelesen & gelernt', bg: 'bg-blue-50', text: 'text-blue-700' },
+              { level: 2, label: 'Vertraut', sub: 'bereits angewendet', bg: 'bg-green-50', text: 'text-green-700' },
+              { level: 3, label: 'Fortgeschritten', sub: 'mehrfach angewendet', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+              { level: 4, label: 'Experte', sub: 'Methoden erweitern, Profi', bg: 'bg-orange-50', text: 'text-orange-700' },
+              { level: 5, label: 'Meister', sub: 'Vorbildfunktion, gibt Wissen weiter', bg: 'bg-red-50', text: 'text-red-700' },
+            ].map(({ level, label, sub, bg, text }) => (
+              <div key={level} className={`flex items-center gap-[12px] px-[12px] py-[8px] rounded-[4px] ${bg}`}>
+                <span className={`font-body text-[13px] font-semibold ${text} w-[16px] shrink-0`}>{level}</span>
+                <span className={`font-body text-[13px] font-medium ${text}`}>{label}</span>
+                <span className="font-body text-[12px] text-neutral-400">— {sub}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
