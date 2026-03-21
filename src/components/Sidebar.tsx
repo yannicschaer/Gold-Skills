@@ -8,6 +8,7 @@ import {
   GearSix,
   CaretLeft,
   SignOut,
+  ListBullets,
 } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 
@@ -17,25 +18,45 @@ type NavItem = {
   icon: Icon
   requireAdmin?: boolean
   requireEdit?: boolean
+  requireTeamManager?: boolean
+  children?: NavItem[]
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: House },
-  { to: '/skills', label: 'Skills Matrix', icon: ChartBar, requireEdit: true },
+  {
+    to: '/skills',
+    label: 'Skills Matrix',
+    icon: ChartBar,
+    requireEdit: true,
+    children: [
+      { to: '/skills/catalog', label: 'Skillkatalog', icon: ListBullets, requireTeamManager: true },
+    ],
+  },
   { to: '/team', label: 'Team Skills', icon: Users },
   { to: '/admin', label: 'Admin', icon: GearSix, requireAdmin: true },
 ]
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const { profile, isAdmin, canEditSkills, signOut } = useAuthStore()
+  const { profile, isAdmin, canEditSkills, canManageTeams, signOut } = useAuthStore()
   const location = useLocation()
 
-  const visibleNav = NAV_ITEMS.filter((item) => {
+  const isItemAllowed = (item: NavItem) => {
     if (item.requireAdmin && !isAdmin) return false
     if (item.requireEdit && !canEditSkills) return false
+    if (item.requireTeamManager && !canManageTeams) return false
     return true
-  })
+  }
+
+  const visibleNav = NAV_ITEMS.filter((item) => {
+    // Show parent if it passes its own check OR if any child is visible
+    if (isItemAllowed(item)) return true
+    return item.children?.some(isItemAllowed) ?? false
+  }).map((item) => ({
+    ...item,
+    children: item.children?.filter(isItemAllowed),
+  }))
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -78,30 +99,64 @@ export function Sidebar() {
       <nav className="flex flex-col gap-[4px] overflow-y-auto min-h-0">
         {visibleNav.map((item) => {
           const isActive = location.pathname === item.to
+          const hasActiveChild = item.children?.some(
+            (child) =>
+              location.pathname === child.to ||
+              location.pathname.startsWith(child.to + '/'),
+          )
+          const isParentHighlighted = isActive || hasActiveChild
+          const showChildren = isParentHighlighted && !collapsed && (item.children?.length ?? 0) > 0
           const IconComponent = item.icon
+          // If parent page isn't accessible but children are, link to first child
+          const effectiveTo =
+            !isItemAllowed(item) && item.children?.length
+              ? item.children[0].to
+              : item.to
 
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              title={collapsed ? item.label : undefined}
-              className={`flex items-center gap-[12px] h-[44px] rounded-[8px] font-body text-[16px] font-semibold leading-[1.5] transition-colors ${
-                collapsed
-                  ? 'justify-center px-0'
-                  : 'px-[12px]'
-              } ${
-                isActive
-                  ? 'bg-forest-800 text-white'
-                  : 'text-sand-200 hover:bg-forest-900 hover:text-white'
-              }`}
-            >
-              <IconComponent
-                size={20}
-                weight={isActive ? 'fill' : 'regular'}
-                className="shrink-0"
-              />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
+            <div key={item.to}>
+              <Link
+                to={effectiveTo}
+                title={collapsed ? item.label : undefined}
+                className={`flex items-center gap-[12px] h-[44px] rounded-[8px] font-body text-[16px] font-semibold leading-[1.5] transition-colors ${
+                  collapsed
+                    ? 'justify-center px-0'
+                    : 'px-[12px]'
+                } ${
+                  isParentHighlighted
+                    ? 'bg-forest-800 text-white'
+                    : 'text-sand-200 hover:bg-forest-900 hover:text-white'
+                }`}
+              >
+                <IconComponent
+                  size={20}
+                  weight={isParentHighlighted ? 'fill' : 'regular'}
+                  className="shrink-0"
+                />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+              {showChildren &&
+                item.children!.map((child) => {
+                  const isChildActive =
+                    location.pathname === child.to ||
+                    location.pathname.startsWith(child.to + '/')
+                  const ChildIcon = child.icon
+                  return (
+                    <Link
+                      key={child.to}
+                      to={child.to}
+                      className={`flex items-center gap-[10px] h-[36px] rounded-[8px] font-body text-[14px] leading-[1.5] transition-colors pl-[44px] ${
+                        isChildActive
+                          ? 'font-semibold text-white'
+                          : 'text-sand-300 hover:text-white'
+                      }`}
+                    >
+                      <ChildIcon size={16} className="shrink-0" />
+                      <span className="truncate">{child.label}</span>
+                    </Link>
+                  )
+                })}
+            </div>
           )
         })}
       </nav>

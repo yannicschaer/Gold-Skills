@@ -53,6 +53,9 @@ interface TeamsState {
     currentLevel: number,
     targetLevel: number,
   ) => Promise<void>
+
+  // Bulk fetch for MySkillsPage
+  fetchUserTeamData: (userId: string) => Promise<void>
 }
 
 export const useTeamsStore = create<TeamsState>((set, get) => ({
@@ -333,6 +336,44 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
     if (error) {
       console.error('Team skill rating save failed:', error)
       set({ teamSkillRatings: prev })
+    }
+  },
+
+  // ── Bulk fetch for MySkillsPage ──────────────────────
+
+  fetchUserTeamData: async (userId) => {
+    const { data: memberships } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
+    if (!memberships || memberships.length === 0) {
+      set({ userTeamIds: [] })
+      return
+    }
+
+    const teamIds = (memberships as { team_id: string }[]).map((m) => m.team_id)
+    set({ userTeamIds: teamIds })
+
+    const [teamsRes, groupsRes, skillsRes, ratingsRes] = await Promise.all([
+      supabase.from('teams').select('*').in('id', teamIds).order('sort_order'),
+      supabase.from('team_skill_groups').select('*').in('team_id', teamIds).order('sort_order'),
+      supabase.from('team_skills').select('*').in('team_id', teamIds).order('sort_order'),
+      supabase
+        .from('team_skill_ratings')
+        .select('*, team_skills!inner(team_id)')
+        .eq('user_id', userId)
+        .in('team_skills.team_id', teamIds),
+    ])
+
+    if (teamsRes.data) set({ teams: teamsRes.data as Team[] })
+    if (groupsRes.data) set({ teamSkillGroups: groupsRes.data as TeamSkillGroup[] })
+    if (skillsRes.data) set({ teamSkills: skillsRes.data as TeamSkill[] })
+    if (ratingsRes.data) {
+      set({
+        teamSkillRatings: (ratingsRes.data as (TeamSkillRating & { team_skills: unknown })[]).map(
+          ({ team_skills: _ts, ...rest }) => rest as TeamSkillRating,
+        ),
+      })
     }
   },
 }))

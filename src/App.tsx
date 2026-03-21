@@ -11,6 +11,7 @@ import { MySkillsPage } from '@/pages/MySkillsPage'
 import { TeamOverviewPage } from '@/pages/TeamOverviewPage'
 import { MemberSkillsPage } from '@/pages/MemberSkillsPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { TeamCatalogPage } from '@/pages/TeamCatalogPage'
 
 export default function App() {
   const { initialize } = useAuthStore()
@@ -43,6 +44,22 @@ export default function App() {
           />
           <Route path="/team" element={<TeamOverviewPage />} />
           <Route path="/team/:userId" element={<MemberSkillsPage />} />
+          <Route
+            path="/skills/catalog"
+            element={
+              <RoleRoute allowedRoles={['admin', 'operations']} redirectTo="/skills">
+                <TeamCatalogPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/skills/catalog/:teamId"
+            element={
+              <RoleRoute allowedRoles={['admin', 'operations']} redirectTo="/skills">
+                <TeamCatalogPage />
+              </RoleRoute>
+            }
+          />
           <Route
             path="/admin"
             element={

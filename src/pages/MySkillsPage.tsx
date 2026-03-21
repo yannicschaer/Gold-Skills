@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
+import { useTeamsStore } from '@/store/teams'
 import { SkillStepper } from '@/components/SkillStepper'
 import { SkillRadarChart } from '@/components/SkillRadarChart'
 import { SkillTimeline } from '@/components/SkillTimeline'
@@ -78,6 +79,16 @@ export function MySkillsPage() {
     upsertRating,
   } = useSkillsStore()
 
+  const {
+    teams,
+    userTeamIds,
+    teamSkillGroups,
+    teamSkills,
+    teamSkillRatings,
+    fetchUserTeamData,
+    upsertTeamSkillRating,
+  } = useTeamsStore()
+
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<Tab>('skills')
   const [selectedSkill, setSelectedSkill] = useState<SkillWithCategory | null>(null)
@@ -86,8 +97,11 @@ export function MySkillsPage() {
 
   useEffect(() => {
     fetchSkillCatalog()
-    if (user) fetchMyRatings(user.id)
-  }, [user, fetchSkillCatalog, fetchMyRatings])
+    if (user) {
+      fetchMyRatings(user.id)
+      fetchUserTeamData(user.id)
+    }
+  }, [user, fetchSkillCatalog, fetchMyRatings, fetchUserTeamData])
 
   useEffect(() => {
     if (activeTab === 'timeline' && user) {
@@ -113,6 +127,23 @@ export function MySkillsPage() {
       await upsertRating(user.id, skillId, current, target)
     } catch (err) {
       console.error('Skill-Rating speichern fehlgeschlagen:', err)
+    }
+  }
+
+  const handleTeamSkillChange = async (
+    teamSkillId: string,
+    field: 'current' | 'target',
+    value: SkillLevel,
+    prevCurrent: number,
+    prevTarget: number,
+  ) => {
+    if (!user) return
+    const current = field === 'current' ? value : prevCurrent
+    const target = field === 'target' ? value : prevTarget
+    try {
+      await upsertTeamSkillRating(user.id, teamSkillId, current, target)
+    } catch (err) {
+      console.error('Team skill rating save failed:', err)
     }
   }
 
@@ -280,6 +311,123 @@ export function MySkillsPage() {
               </div>
             )
           })}
+
+          {/* Team Skills */}
+          {userTeamIds.length > 0 &&
+            teams
+              .filter((t) => userTeamIds.includes(t.id))
+              .map((team) => {
+                const teamGroups = teamSkillGroups
+                  .filter((g) => g.team_id === team.id)
+                  .sort((a, b) => a.sort_order - b.sort_order)
+                if (teamGroups.length === 0) return null
+
+                return (
+                  <div key={team.id} className="mt-[24px]">
+                    <div className="flex items-center gap-[12px] mb-[16px]">
+                      <div className="h-[1px] flex-1 bg-sand-200" />
+                      <span className="font-body text-[12px] font-semibold text-neutral-400 uppercase tracking-[0.5px]">
+                        {team.name}
+                      </span>
+                      <div className="h-[1px] flex-1 bg-sand-200" />
+                    </div>
+
+                    {teamGroups.map((group) => {
+                      const groupSkills = teamSkills
+                        .filter((s) => s.group_id === group.id)
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                      if (groupSkills.length === 0) return null
+                      const isGroupCollapsed = collapsed[`team-${group.id}`] ?? false
+
+                      return (
+                        <div key={group.id} className="mb-[16px]">
+                          <button
+                            type="button"
+                            onClick={() => toggleCategory(`team-${group.id}`)}
+                            className={`flex items-center justify-between w-full p-[12px] bg-sand-100 border-l-[3px] border-mint-400 rounded-t-[4px] ${
+                              isGroupCollapsed ? 'rounded-b-[4px]' : 'rounded-b-0'
+                            }`}
+                          >
+                            <span className="font-body text-[14px] font-semibold leading-[1.5] uppercase text-forest-950">
+                              {group.name}
+                            </span>
+                            <div className="flex items-center gap-[8px]">
+                              <span className="font-body text-[14px] text-neutral-500">
+                                {groupSkills.length} Skills
+                              </span>
+                              <CaretUp
+                                size={16}
+                                className={`text-neutral-500 transition-transform ${
+                                  isGroupCollapsed ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </div>
+                          </button>
+
+                          {!isGroupCollapsed && (
+                            <div className="bg-white rounded-b-[8px] border border-t-0 border-sand-200 overflow-hidden">
+                              <div className="flex items-center gap-[16px] pl-[12px] pr-[12px] py-[4px] font-body text-[12px] text-neutral-500 border-b border-sand-200">
+                                <span className="flex-1 min-w-0">Skill</span>
+                                <span className="shrink-0 w-[88px]">Ist</span>
+                                <span className="shrink-0 w-[120px]" />
+                                <span className="shrink-0 w-[24px]" />
+                                <span className="shrink-0 w-[88px]">Soll</span>
+                                <span className="shrink-0 w-[120px]" />
+                                <span className="shrink-0 w-[60px]">Delta</span>
+                              </div>
+
+                              {groupSkills.map((tSkill, idx) => {
+                                const rating = teamSkillRatings.find(
+                                  (r) => r.team_skill_id === tSkill.id,
+                                )
+                                const cur = rating?.current_level ?? 0
+                                const tgt = rating?.target_level ?? 0
+                                const delta = cur - tgt
+                                const isLast = idx === groupSkills.length - 1
+
+                                return (
+                                  <div
+                                    key={tSkill.id}
+                                    className={`flex items-center gap-[16px] w-full pl-[12px] pr-[12px] py-[8px] hover:bg-sand-50 transition-colors ${
+                                      isLast ? '' : 'border-b border-sand-200'
+                                    }`}
+                                  >
+                                    <span className="flex-1 font-body text-[12px] leading-[1.5] text-forest-950 truncate min-w-0">
+                                      {tSkill.name}
+                                    </span>
+                                    <div className="shrink-0 w-[88px]">
+                                      <SkillStepper
+                                        value={cur}
+                                        onChange={(v) =>
+                                          handleTeamSkillChange(tSkill.id, 'current', v, cur, tgt)
+                                        }
+                                      />
+                                    </div>
+                                    <ProgressBar value={cur} />
+                                    <div className="shrink-0 w-[24px]" />
+                                    <div className="shrink-0 w-[88px]">
+                                      <SkillStepper
+                                        value={tgt}
+                                        onChange={(v) =>
+                                          handleTeamSkillChange(tSkill.id, 'target', v, cur, tgt)
+                                        }
+                                      />
+                                    </div>
+                                    <ProgressBar value={tgt} />
+                                    <div className="shrink-0 w-[60px]">
+                                      <DeltaBadge value={delta} />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
         </div>
       )}
 

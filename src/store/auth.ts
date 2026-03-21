@@ -11,6 +11,7 @@ interface AuthState {
   role: Profile['role'] | null
   isAdmin: boolean
   canEditSkills: boolean
+  canManageTeams: boolean
   initialize: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
@@ -23,6 +24,7 @@ function deriveRoleFlags(role: Profile['role'] | null) {
     role,
     isAdmin: role === 'admin',
     canEditSkills: role === 'admin' || role === 'designer',
+    canManageTeams: role === 'admin' || role === 'operations',
   }
 }
 
@@ -59,6 +61,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   role: null,
   isAdmin: false,
   canEditSkills: false,
+  canManageTeams: false,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
