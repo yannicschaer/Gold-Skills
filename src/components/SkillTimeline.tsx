@@ -8,12 +8,13 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import type { SkillRatingHistory } from '@/types/database'
+import type { SkillRating, SkillRatingHistory } from '@/types/database'
 import type { SkillWithCategory, SanitySkillCategory } from '@/types/sanity'
 import type { TimeRange } from '@/lib/dateUtils'
 
 interface Props {
   history: SkillRatingHistory[]
+  ratings: SkillRating[]
   skills: SkillWithCategory[]
   categories: SanitySkillCategory[]
   timeRange: TimeRange
@@ -30,6 +31,7 @@ function formatDate(isoDate: string): string {
 
 export function SkillTimeline({
   history,
+  ratings,
   skills,
   categories,
   timeRange,
@@ -79,6 +81,29 @@ export function SkillTimeline({
     return []
   }, [history, skills, selectedFilter])
 
+  // Current snapshot by category for the empty state
+  const currentSnapshot = useMemo(() => {
+    if (ratings.length === 0) return []
+    return categories
+      .filter((cat) => skills.some((s) => s.categorySlug === cat.slug))
+      .map((cat) => {
+        const catSkills = skills.filter((s) => s.categorySlug === cat.slug)
+        const count = catSkills.length
+        let istSum = 0
+        let sollSum = 0
+        for (const s of catSkills) {
+          const r = ratings.find((r) => r.skill_id === s._id)
+          istSum += r?.current_level ?? 0
+          sollSum += r?.target_level ?? 0
+        }
+        return {
+          name: cat.title,
+          ist: Math.round((istSum / count) * 10) / 10,
+          soll: Math.round((sollSum / count) * 10) / 10,
+        }
+      })
+  }, [ratings, skills, categories])
+
   const xAxisInterval = chartData.length > 10 ? Math.floor(chartData.length / 8) : 0
 
   const isEmpty = chartData.length < 2
@@ -127,13 +152,51 @@ export function SkillTimeline({
         </div>
       </div>
 
-      {/* Chart or empty state */}
+      {/* Chart or current snapshot */}
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center h-[280px] rounded-[8px] border border-dashed border-sand-200 bg-neutral-50">
-          <span className="font-heading text-[16px] text-forest-950 mb-[6px]">Noch zu wenig Daten</span>
-          <span className="font-body text-[13px] text-neutral-400 text-center max-w-[260px]">
-            Komm morgen wieder — dann siehst du deinen ersten Fortschritt hier.
-          </span>
+        <div className="flex flex-col gap-[12px]">
+          <span className="font-body text-[12px] text-neutral-400">Aktueller Stand — Verlauf erscheint nach mehreren Einträgen</span>
+          {currentSnapshot.map((cat) => (
+            <div key={cat.name} className="flex flex-col gap-[6px]">
+              <div className="flex items-center justify-between">
+                <span className="font-body text-[13px] font-medium text-forest-950">{cat.name}</span>
+                <span className="font-body text-[12px] text-neutral-400">
+                  {cat.ist.toFixed(1)} / {cat.soll.toFixed(1)}
+                </span>
+              </div>
+              <div className="relative h-[6px] rounded-full bg-sand-100 overflow-hidden">
+                {/* Soll bar */}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-mint-200"
+                  style={{ width: `${(cat.soll / 5) * 100}%` }}
+                />
+                {/* Ist bar */}
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-mint-500"
+                  style={{ width: `${(cat.ist / 5) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {currentSnapshot.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-[200px] rounded-[8px] border border-dashed border-sand-200 bg-neutral-50">
+              <span className="font-body text-[13px] text-neutral-400 text-center max-w-[260px]">
+                Setze zuerst deine Skills — dann erscheint hier dein aktueller Stand.
+              </span>
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="flex items-center gap-[16px] mt-[4px]">
+            <div className="flex items-center gap-[6px]">
+              <div className="w-[12px] h-[6px] rounded-full bg-mint-500" />
+              <span className="font-body text-[12px] text-neutral-500">Ist</span>
+            </div>
+            <div className="flex items-center gap-[6px]">
+              <div className="w-[12px] h-[6px] rounded-full bg-mint-200" />
+              <span className="font-body text-[12px] text-neutral-500">Soll</span>
+            </div>
+          </div>
         </div>
       ) : (
         <>

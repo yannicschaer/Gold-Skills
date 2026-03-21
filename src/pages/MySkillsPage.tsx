@@ -456,6 +456,7 @@ export function MySkillsPage() {
           <div className="bg-white rounded-[12px] border border-sand-200 p-[16px]">
             <SkillTimeline
               history={skillHistory}
+              ratings={ratings}
               skills={skills}
               categories={categories}
               timeRange={timelineRange}
