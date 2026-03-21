@@ -20,6 +20,63 @@ export interface SkillRating {
   updated_at: string
 }
 
+export interface SkillRatingHistory {
+  id: string
+  user_id: string
+  skill_id: string
+  current_level: SkillLevel
+  target_level: SkillLevel
+  recorded_date: string  // "YYYY-MM-DD"
+  recorded_at: string
+}
+
+export interface Team {
+  id: string
+  name: string
+  description: string
+  sort_order: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamMember {
+  id: string
+  team_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface TeamSkillGroup {
+  id: string
+  team_id: string
+  name: string
+  description: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamSkill {
+  id: string
+  group_id: string
+  team_id: string
+  name: string
+  description: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TeamSkillRating {
+  id: string
+  user_id: string
+  team_skill_id: string
+  current_level: SkillLevel
+  target_level: SkillLevel
+  updated_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -32,6 +89,36 @@ export interface Database {
         Row: SkillRating
         Insert: Omit<SkillRating, 'id' | 'updated_at'>
         Update: Partial<Omit<SkillRating, 'id' | 'user_id'>>
+      }
+      teams: {
+        Row: Team
+        Insert: Omit<Team, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Team, 'id' | 'created_at'>>
+      }
+      team_members: {
+        Row: TeamMember
+        Insert: Omit<TeamMember, 'id' | 'created_at'>
+        Update: never
+      }
+      team_skill_groups: {
+        Row: TeamSkillGroup
+        Insert: Omit<TeamSkillGroup, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<TeamSkillGroup, 'id' | 'created_at'>>
+      }
+      team_skills: {
+        Row: TeamSkill
+        Insert: Omit<TeamSkill, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<TeamSkill, 'id' | 'created_at'>>
+      }
+      team_skill_ratings: {
+        Row: TeamSkillRating
+        Insert: Omit<TeamSkillRating, 'id' | 'updated_at'>
+        Update: Partial<Omit<TeamSkillRating, 'id' | 'user_id'>>
+      }
+      skill_rating_history: {
+        Row: SkillRatingHistory
+        Insert: never
+        Update: never
       }
     }
   }

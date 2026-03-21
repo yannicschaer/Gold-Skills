@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SkillRating } from '@/types/database'
+import type { SkillRating, SkillRatingHistory } from '@/types/database'
 import type { SkillWithCategory, SanitySkillCategory } from '@/types/sanity'
 import { supabase } from '@/lib/supabase'
 import { sanityClient } from '@/lib/sanity'
@@ -10,11 +10,13 @@ interface SkillsState {
   ratings: SkillRating[]
   memberRatings: SkillRating[]
   teamRatings: SkillRating[]
+  skillHistory: SkillRatingHistory[]
   loading: boolean
   fetchSkillCatalog: () => Promise<void>
   fetchMyRatings: (userId: string) => Promise<void>
   fetchUserRatings: (userId: string) => Promise<void>
   fetchTeamRatings: () => Promise<void>
+  fetchMySkillHistory: (userId: string, sinceDate?: string) => Promise<void>
   upsertRating: (
     userId: string,
     skillId: string,
@@ -32,6 +34,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   ratings: [],
   memberRatings: [],
   teamRatings: [],
+  skillHistory: [],
   loading: false,
 
   fetchSkillCatalog: async () => {
@@ -71,6 +74,25 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   fetchTeamRatings: async () => {
     const { data } = await supabase.from('skill_ratings').select('*')
     if (data) set({ teamRatings: data as SkillRating[] })
+  },
+
+  fetchMySkillHistory: async (userId: string, sinceDate?: string) => {
+    let query = supabase
+      .from('skill_rating_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('recorded_date', { ascending: true })
+
+    if (sinceDate) {
+      query = query.gte('recorded_date', sinceDate)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Fehler beim Laden der Skill-Historie:', error)
+      return
+    }
+    if (data) set({ skillHistory: data as SkillRatingHistory[] })
   },
 
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {

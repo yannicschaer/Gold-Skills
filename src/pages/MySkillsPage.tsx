@@ -3,44 +3,15 @@ import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
 import { SkillStepper } from '@/components/SkillStepper'
 import { SkillRadarChart } from '@/components/SkillRadarChart'
+import { SkillTimeline } from '@/components/SkillTimeline'
+import { ProgressBar } from '@/components/ProgressBar'
+import { DeltaBadge } from '@/components/DeltaBadge'
 import type { SkillLevel } from '@/types/database'
 import type { SkillWithCategory } from '@/types/sanity'
+import { getCutoffDate, type TimeRange } from '@/lib/dateUtils'
 import { CaretUp, X } from '@phosphor-icons/react'
 
 type Tab = 'skills' | 'timeline' | 'analyse'
-
-function ProgressBar({ value, max = 5 }: { value: number; max?: number }) {
-  const pct = Math.min((value / max) * 100, 100)
-  return (
-    <div className="flex items-center gap-[8px] w-[120px]">
-      <div className="relative w-[80px] h-[6px] rounded-[3px] bg-sand-200">
-        <div
-          className="absolute top-0 left-0 h-[6px] rounded-[3px] bg-mint-400 transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="font-body text-[12px] text-forest-950 tabular-nums">
-        {value.toFixed(1)}
-      </span>
-    </div>
-  )
-}
-
-function DeltaBadge({ value }: { value: number }) {
-  const isPositive = value > 0
-  const isNegative = value < 0
-  return (
-    <div
-      className={`inline-flex items-center justify-center px-[10px] py-[4px] rounded-full text-[12px] font-semibold font-body tabular-nums ${
-        isNegative
-          ? 'bg-coral-50 text-coral-600'
-          : 'bg-mint-50 text-mint-700'
-      }`}
-    >
-      {isPositive ? '+' : ''}{value.toFixed(1)}
-    </div>
-  )
-}
 
 function SkillDrawer({
   skill,
@@ -99,20 +70,30 @@ export function MySkillsPage() {
     categories,
     skills,
     ratings,
+    skillHistory,
     loading,
     fetchSkillCatalog,
     fetchMyRatings,
+    fetchMySkillHistory,
     upsertRating,
   } = useSkillsStore()
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<Tab>('skills')
   const [selectedSkill, setSelectedSkill] = useState<SkillWithCategory | null>(null)
+  const [timelineRange, setTimelineRange] = useState<TimeRange>('6m')
+  const [timelineFilter, setTimelineFilter] = useState<string>('all')
 
   useEffect(() => {
     fetchSkillCatalog()
     if (user) fetchMyRatings(user.id)
   }, [user, fetchSkillCatalog, fetchMyRatings])
+
+  useEffect(() => {
+    if (activeTab === 'timeline' && user) {
+      fetchMySkillHistory(user.id, getCutoffDate(timelineRange))
+    }
+  }, [activeTab, user, timelineRange, fetchMySkillHistory])
 
   const getRating = useCallback(
     (skillId: string) => ratings.find((r) => r.skill_id === skillId),
@@ -323,8 +304,18 @@ export function MySkillsPage() {
       )}
 
       {activeTab === 'timeline' && (
-        <div className="flex items-center justify-center py-[64px] text-neutral-400 font-body text-[14px]">
-          Timeline — kommt bald
+        <div className="mt-[24px]">
+          <div className="bg-white rounded-[12px] border border-sand-200 p-[16px]">
+            <SkillTimeline
+              history={skillHistory}
+              skills={skills}
+              categories={categories}
+              timeRange={timelineRange}
+              selectedFilter={timelineFilter}
+              onTimeRangeChange={setTimelineRange}
+              onFilterChange={setTimelineFilter}
+            />
+          </div>
         </div>
       )}
 
