@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useSkillsStore } from '@/store/skills'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/database'
+import { ExportButtons } from '@/components/ExportButtons'
+import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
 
 export function MemberSkillsPage() {
   const { userId } = useParams<{ userId: string }>()
@@ -55,10 +57,18 @@ export function MemberSkillsPage() {
         >
           &larr; Zurück zur Team-Übersicht
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">
-          {member.full_name || member.email}
-        </h1>
-        <p className="text-sm text-gray-500">{member.email}</p>
+        <div className="flex items-center justify-between mt-2">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {member.full_name || member.email}
+            </h1>
+            <p className="text-sm text-gray-500">{member.email}</p>
+          </div>
+          <ExportButtons
+            onExportCsv={() => exportPersonCsv(member.full_name || member.email, categories, skills, memberRatings)}
+            onExportPdf={() => exportPersonPdf(member.full_name || member.email, categories, skills, memberRatings)}
+          />
+        </div>
       </div>
 
       {categories.map((category) => {

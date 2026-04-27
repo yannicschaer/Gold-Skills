@@ -3,6 +3,8 @@ import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
 import { SkillStepper } from '@/components/SkillStepper'
 import { SkillRadarChart } from '@/components/SkillRadarChart'
+import { ExportButtons } from '@/components/ExportButtons'
+import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
 import type { SkillLevel } from '@/types/database'
 import type { SkillWithCategory } from '@/types/sanity'
 import { CaretUp, X } from '@phosphor-icons/react'
@@ -94,7 +96,7 @@ function SkillDrawer({
 }
 
 export function MySkillsPage() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const {
     categories,
     skills,
@@ -176,6 +178,7 @@ export function MySkillsPage() {
     <div className="flex flex-col">
       {/* Tab Navigation */}
       <div className="flex items-center gap-[18px] border-b border-sand-200">
+        <div className="flex items-center gap-[18px] flex-1">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -202,6 +205,19 @@ export function MySkillsPage() {
             </button>
           )
         })}
+        </div>
+        <div className="ml-auto pb-[8px]">
+          <ExportButtons
+            onExportCsv={() => {
+              const name = profile?.full_name || profile?.email || 'meine_skills'
+              exportPersonCsv(name, categories, skills, ratings)
+            }}
+            onExportPdf={() => {
+              const name = profile?.full_name || profile?.email || 'meine_skills'
+              exportPersonPdf(name, categories, skills, ratings)
+            }}
+          />
+        </div>
       </div>
 
       {/* Tab Content */}
