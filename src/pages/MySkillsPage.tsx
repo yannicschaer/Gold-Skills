@@ -7,6 +7,8 @@ import { SkillRadarChart } from '@/components/SkillRadarChart'
 import { SkillTimeline } from '@/components/SkillTimeline'
 import { ProgressBar } from '@/components/ProgressBar'
 import { DeltaBadge } from '@/components/DeltaBadge'
+import { ExportButtons } from '@/components/ExportButtons'
+import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
 import type { SkillLevel } from '@/types/database'
 import type { SkillWithCategory } from '@/types/sanity'
 import { getCutoffDate, type TimeRange } from '@/lib/dateUtils'
@@ -92,7 +94,7 @@ function SkillDrawer({
 }
 
 export function MySkillsPage() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const {
     categories,
     skills,
@@ -214,6 +216,7 @@ export function MySkillsPage() {
     <div className="flex flex-col">
       {/* Tab Navigation */}
       <div className="flex items-center gap-[18px] border-b border-sand-200">
+        <div className="flex items-center gap-[18px] flex-1">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -240,6 +243,19 @@ export function MySkillsPage() {
             </button>
           )
         })}
+        </div>
+        <div className="ml-auto pb-[8px]">
+          <ExportButtons
+            onExportCsv={() => {
+              const name = profile?.full_name || profile?.email || 'meine_skills'
+              exportPersonCsv(name, categories, skills, ratings)
+            }}
+            onExportPdf={() => {
+              const name = profile?.full_name || profile?.email || 'meine_skills'
+              exportPersonPdf(name, categories, skills, ratings)
+            }}
+          />
+        </div>
       </div>
 
       {/* Tab Content */}

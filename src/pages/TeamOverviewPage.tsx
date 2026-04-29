@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useSkillsStore } from '@/store/skills'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/database'
+import { ExportButtons } from '@/components/ExportButtons'
+import { exportTeamCsv, exportTeamPdf } from '@/lib/export'
 
 export function TeamOverviewPage() {
   const {
@@ -41,6 +43,21 @@ export function TeamOverviewPage() {
     return map
   }, [teamRatings])
 
+  const teamMembers = useMemo(
+    () => members.map((m) => ({ id: m.id, name: m.full_name || m.email })),
+    [members],
+  )
+
+  const handleExportCsv = useCallback(
+    () => exportTeamCsv(teamMembers, categories, skills, teamRatings),
+    [teamMembers, categories, skills, teamRatings],
+  )
+
+  const handleExportPdf = useCallback(
+    () => exportTeamPdf(teamMembers, categories, skills, teamRatings),
+    [teamMembers, categories, skills, teamRatings],
+  )
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -51,7 +68,10 @@ export function TeamOverviewPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Team-Übersicht</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Team-Übersicht</h1>
+        <ExportButtons onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} />
+      </div>
 
       {/* Team Members */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
