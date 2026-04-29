@@ -30,10 +30,10 @@ const NAV_ITEMS: NavItem[] = [
     icon: ChartBar,
     requireEdit: true,
     children: [
+      { to: '/team', label: 'Team Skills', icon: Users },
       { to: '/skills/catalog', label: 'Skillkatalog', icon: ListBullets, requireTeamManager: true },
     ],
   },
-  { to: '/team', label: 'Team Skills', icon: Users },
   { to: '/admin', label: 'Admin', icon: GearSix, requireAdmin: true },
 ]
 
