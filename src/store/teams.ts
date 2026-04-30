@@ -53,6 +53,12 @@ interface TeamsState {
     currentLevel: number,
     targetLevel: number,
   ) => Promise<void>
+  confirmTeamSkillRating: (
+    userId: string,
+    teamSkillId: string,
+    confirmedLevel: number,
+  ) => Promise<void>
+  clearTeamSkillConfirmation: (userId: string, teamSkillId: string) => Promise<void>
 
   // Bulk fetch for MySkillsPage
   fetchUserTeamData: (userId: string) => Promise<void>
@@ -316,13 +322,17 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
             team_skill_id: teamSkillId,
             current_level: current,
             target_level: target,
+            confirmation_status: 'self_assessed',
+            confirmed_level: null,
+            confirmed_by: null,
+            confirmed_at: null,
             updated_at: new Date().toISOString(),
           },
         ],
       })
     }
 
-    // Persist
+    // Persist (Confirmation-Felder via separate Action)
     const { error } = await supabase.from('team_skill_ratings').upsert(
       {
         user_id: userId,
@@ -337,6 +347,53 @@ export const useTeamsStore = create<TeamsState>((set, get) => ({
       console.error('Team skill rating save failed:', error)
       set({ teamSkillRatings: prev })
     }
+  },
+
+  confirmTeamSkillRating: async (userId, teamSkillId, confirmedLevel) => {
+    const clamped = Math.max(0, Math.min(5, Math.round(confirmedLevel))) as SkillLevel
+    const { error, data } = await supabase
+      .from('team_skill_ratings')
+      .update({
+        confirmation_status: 'confirmed',
+        confirmed_level: clamped,
+      } as never)
+      .eq('user_id', userId)
+      .eq('team_skill_id', teamSkillId)
+      .select()
+      .single()
+    if (error) throw error
+
+    set({
+      teamSkillRatings: get().teamSkillRatings.map((r) =>
+        r.user_id === userId && r.team_skill_id === teamSkillId
+          ? (data as TeamSkillRating)
+          : r,
+      ),
+    })
+  },
+
+  clearTeamSkillConfirmation: async (userId, teamSkillId) => {
+    const { error, data } = await supabase
+      .from('team_skill_ratings')
+      .update({
+        confirmation_status: 'self_assessed',
+        confirmed_level: null,
+        confirmed_by: null,
+        confirmed_at: null,
+      } as never)
+      .eq('user_id', userId)
+      .eq('team_skill_id', teamSkillId)
+      .select()
+      .single()
+    if (error) throw error
+
+    set({
+      teamSkillRatings: get().teamSkillRatings.map((r) =>
+        r.user_id === userId && r.team_skill_id === teamSkillId
+          ? (data as TeamSkillRating)
+          : r,
+      ),
+    })
   },
 
   // ── Bulk fetch for MySkillsPage ──────────────────────

@@ -12,6 +12,7 @@ import { TeamOverviewPage } from '@/pages/TeamOverviewPage'
 import { MemberSkillsPage } from '@/pages/MemberSkillsPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { TeamCatalogPage } from '@/pages/TeamCatalogPage'
+import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 
 export default function App() {
   const { initialize } = useAuthStore()
@@ -44,6 +45,7 @@ export default function App() {
           />
           <Route path="/team" element={<TeamOverviewPage />} />
           <Route path="/team/:userId" element={<MemberSkillsPage />} />
+          <Route path="/manager" element={<ManagerDashboardPage />} />
           <Route
             path="/skills/catalog"
             element={

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SkillRating, SkillRatingHistory } from '@/types/database'
+import type { SkillLevel, SkillRating, SkillRatingHistory } from '@/types/database'
 import type { SkillWithCategory, SanitySkillCategory } from '@/types/sanity'
 import { supabase } from '@/lib/supabase'
 import { sanityClient } from '@/lib/sanity'
@@ -11,18 +11,26 @@ interface SkillsState {
   memberRatings: SkillRating[]
   teamRatings: SkillRating[]
   skillHistory: SkillRatingHistory[]
+  memberSkillHistory: SkillRatingHistory[]
   loading: boolean
   fetchSkillCatalog: () => Promise<void>
   fetchMyRatings: (userId: string) => Promise<void>
   fetchUserRatings: (userId: string) => Promise<void>
   fetchTeamRatings: () => Promise<void>
   fetchMySkillHistory: (userId: string, sinceDate?: string) => Promise<void>
+  fetchUserSkillHistory: (userId: string, sinceDate?: string) => Promise<void>
   upsertRating: (
     userId: string,
     skillId: string,
     currentLevel: number,
     targetLevel: number,
   ) => Promise<void>
+  confirmRating: (
+    userId: string,
+    skillId: string,
+    confirmedLevel: number,
+  ) => Promise<void>
+  clearConfirmation: (userId: string, skillId: string) => Promise<void>
 }
 
 const CATEGORIES_QUERY = `*[_type == "skillCategory"] | order(order asc) { _id, title, "slug": slug.current, order, description }`
@@ -35,6 +43,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   memberRatings: [],
   teamRatings: [],
   skillHistory: [],
+  memberSkillHistory: [],
   loading: false,
 
   fetchSkillCatalog: async () => {
@@ -95,6 +104,26 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     if (data) set({ skillHistory: data as SkillRatingHistory[] })
   },
 
+  fetchUserSkillHistory: async (userId: string, sinceDate?: string) => {
+    // Manager-Sicht auf einen Direct Report (RLS lässt nur Manager + Admin durch).
+    let query = supabase
+      .from('skill_rating_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('recorded_date', { ascending: true })
+
+    if (sinceDate) {
+      query = query.gte('recorded_date', sinceDate)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Fehler beim Laden der Member-Skill-Historie:', error)
+      return
+    }
+    if (data) set({ memberSkillHistory: data as SkillRatingHistory[] })
+  },
+
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {
     // Clamp values to valid range 0-5
     const clampedCurrent = Math.max(0, Math.min(5, Math.round(currentLevel)))
@@ -105,13 +134,20 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     const existingIdx = ratings.findIndex(
       (r) => r.user_id === userId && r.skill_id === skillId,
     )
+    const existing = existingIdx >= 0 ? ratings[existingIdx] : null
     const updated = [...ratings]
     const newRating: SkillRating = {
-      id: existingIdx >= 0 ? ratings[existingIdx].id : crypto.randomUUID(),
+      id: existing?.id ?? crypto.randomUUID(),
       user_id: userId,
       skill_id: skillId,
       current_level: clampedCurrent as SkillRating['current_level'],
       target_level: clampedTarget as SkillRating['target_level'],
+      // Confirmation-Felder werden vom DB-Trigger gegen Self-Edits geschützt;
+      // optimistisch behalten wir den letzten bekannten Wert bei.
+      confirmation_status: existing?.confirmation_status ?? 'self_assessed',
+      confirmed_level: existing?.confirmed_level ?? null,
+      confirmed_by: existing?.confirmed_by ?? null,
+      confirmed_at: existing?.confirmed_at ?? null,
       updated_at: new Date().toISOString(),
     }
     if (existingIdx >= 0) {
@@ -121,7 +157,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
     }
     set({ ratings: updated })
 
-    // Persist to database
+    // Persist to database (only self-fields — confirmation kommt via confirmRating)
     const payload: Record<string, unknown> = {
       user_id: userId,
       skill_id: skillId,
@@ -136,5 +172,61 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       set({ ratings })
       throw error
     }
+  },
+
+  confirmRating: async (userId, skillId, confirmedLevel) => {
+    const clamped = Math.max(0, Math.min(5, Math.round(confirmedLevel))) as SkillLevel
+    const { error, data } = await supabase
+      .from('skill_ratings')
+      .update({
+        confirmation_status: 'confirmed',
+        confirmed_level: clamped,
+      } as never)
+      .eq('user_id', userId)
+      .eq('skill_id', skillId)
+      .select()
+      .single()
+    if (error) throw error
+
+    // Refresh local stores that contain this rating (own ratings or member ratings)
+    const updateRow = (rows: SkillRating[]) =>
+      rows.map((r) =>
+        r.user_id === userId && r.skill_id === skillId
+          ? (data as SkillRating)
+          : r,
+      )
+    set({
+      ratings: updateRow(get().ratings),
+      memberRatings: updateRow(get().memberRatings),
+      teamRatings: updateRow(get().teamRatings),
+    })
+  },
+
+  clearConfirmation: async (userId, skillId) => {
+    const { error, data } = await supabase
+      .from('skill_ratings')
+      .update({
+        confirmation_status: 'self_assessed',
+        confirmed_level: null,
+        confirmed_by: null,
+        confirmed_at: null,
+      } as never)
+      .eq('user_id', userId)
+      .eq('skill_id', skillId)
+      .select()
+      .single()
+    if (error) throw error
+
+    const updateRow = (rows: SkillRating[]) =>
+      rows.map((r) =>
+        r.user_id === userId && r.skill_id === skillId
+          ? (data as SkillRating)
+          : r,
+      )
+    set({
+      ratings: updateRow(get().ratings),
+      memberRatings: updateRow(get().memberRatings),
+      teamRatings: updateRow(get().teamRatings),
+    })
   },
 }))

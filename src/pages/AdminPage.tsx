@@ -13,6 +13,7 @@ export function AdminPage() {
     deactivateMember,
     reactivateMember,
     removeMember,
+    setManager,
   } = useAdminStore()
 
   const [inviteEmail, setInviteEmail] = useState('')
@@ -67,6 +68,17 @@ export function AdminPage() {
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Aktion fehlgeschlagen',
+      )
+    }
+  }
+
+  async function handleManagerChange(userId: string, managerId: string | null) {
+    setActionError(null)
+    try {
+      await setManager(userId, managerId)
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Manager-Zuweisung fehlgeschlagen',
       )
     }
   }
@@ -161,6 +173,9 @@ export function AdminPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-36">
                 Rolle
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">
+                Manager:in
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
                 Status
               </th>
@@ -200,6 +215,25 @@ export function AdminPage() {
                       <option value="designer">Designer</option>
                       <option value="operations">Operations</option>
                       <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={member.manager_id ?? ''}
+                      onChange={(e) =>
+                        handleManagerChange(member.id, e.target.value || null)
+                      }
+                      className="block w-full rounded-md border-gray-300 shadow-sm text-sm
+                                 focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="">— Kein:e Manager:in —</option>
+                      {members
+                        .filter((m) => m.id !== member.id && m.is_active)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.full_name || m.email}
+                          </option>
+                        ))}
                     </select>
                   </td>
                   <td className="px-6 py-4">

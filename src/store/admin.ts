@@ -12,6 +12,7 @@ interface AdminState {
   deactivateMember: (userId: string) => Promise<void>
   reactivateMember: (userId: string) => Promise<void>
   removeMember: (userId: string) => Promise<void>
+  setManager: (userId: string, managerId: string | null) => Promise<void>
 }
 
 async function callAdminFunction(body: Record<string, unknown>) {
@@ -80,6 +81,41 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     await callAdminFunction({ action: 'remove', userId })
     set({
       members: get().members.filter((m) => m.id !== userId),
+    })
+  },
+
+  setManager: async (userId: string, managerId: string | null) => {
+    // Zyklus-Check: Wenn managerId bereits (direkt oder transitiv) userId
+    // als Manager hat, würde die Zuweisung einen Kreis erzeugen.
+    if (managerId && managerId !== userId) {
+      const members = get().members
+      const byId = new Map(members.map((m) => [m.id, m]))
+      let cursor: string | null = managerId
+      const visited = new Set<string>()
+      while (cursor && !visited.has(cursor)) {
+        if (cursor === userId) {
+          throw new Error(
+            'Zuweisung würde einen Berichtszyklus erzeugen — bitte wähle eine andere Person.',
+          )
+        }
+        visited.add(cursor)
+        cursor = byId.get(cursor)?.manager_id ?? null
+      }
+    }
+    if (managerId === userId) {
+      throw new Error('Eine Person kann nicht eigene:r Manager:in sein.')
+    }
+
+    set({ error: null })
+    const { error } = await supabase
+      .from('profiles')
+      .update({ manager_id: managerId } as never)
+      .eq('id', userId)
+    if (error) throw error
+    set({
+      members: get().members.map((m) =>
+        m.id === userId ? { ...m, manager_id: managerId } : m,
+      ),
     })
   },
 }))
