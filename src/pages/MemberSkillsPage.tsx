@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
@@ -6,7 +6,30 @@ import { supabase } from '@/lib/supabase'
 import type { Profile, SkillLevel } from '@/types/database'
 import { ExportButtons } from '@/components/ExportButtons'
 import { SkillStepper } from '@/components/SkillStepper'
+import { SkillTimeline } from '@/components/SkillTimeline'
 import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
+import { getCutoffDate, type TimeRange } from '@/lib/dateUtils'
+import {
+  addToCounts,
+  emptyCounts,
+  getConfirmationState,
+  type ConfirmationState,
+} from '@/lib/confirmation'
+
+type FilterMode = 'all' | 'open'
+type Tab = 'skills' | 'history'
+
+const STATE_LABEL: Record<ConfirmationState, string> = {
+  open: 'Offen',
+  drift: 'Drift',
+  confirmed: 'Bestätigt',
+}
+
+const STATE_DOT: Record<ConfirmationState, string> = {
+  open: 'bg-gray-300',
+  drift: 'bg-orange-400',
+  confirmed: 'bg-green-500',
+}
 
 export function MemberSkillsPage() {
   const { userId } = useParams<{ userId: string }>()
@@ -15,14 +38,20 @@ export function MemberSkillsPage() {
     categories,
     skills,
     memberRatings,
+    memberSkillHistory,
     loading,
     fetchSkillCatalog,
     fetchUserRatings,
+    fetchUserSkillHistory,
     confirmRating,
     clearConfirmation,
   } = useSkillsStore()
 
   const [member, setMember] = useState<Profile | null>(null)
+  const [filter, setFilter] = useState<FilterMode>('all')
+  const [tab, setTab] = useState<Tab>('skills')
+  const [timeRange, setTimeRange] = useState<TimeRange>('6m')
+  const [historyFilter, setHistoryFilter] = useState<string>('all')
 
   useEffect(() => {
     setMember(null)
@@ -40,12 +69,26 @@ export function MemberSkillsPage() {
     }
   }, [userId, fetchSkillCatalog, fetchUserRatings])
 
+  useEffect(() => {
+    if (tab === 'history' && userId) {
+      fetchUserSkillHistory(userId, getCutoffDate(timeRange))
+    }
+  }, [tab, userId, timeRange, fetchUserSkillHistory])
+
   const getRating = useCallback(
     (skillId: string) => memberRatings.find((r) => r.skill_id === skillId),
     [memberRatings],
   )
 
   const canConfirm = !!member && !!user && (isAdmin || member.manager_id === user.id)
+
+  const totals = useMemo(() => {
+    const counts = emptyCounts()
+    for (const skill of skills) {
+      addToCounts(counts, getConfirmationState(getRating(skill._id)))
+    }
+    return counts
+  }, [skills, getRating])
 
   const handleConfirm = async (skillId: string, level: SkillLevel) => {
     if (!userId) return
@@ -96,17 +139,137 @@ export function MemberSkillsPage() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="mb-6 flex items-center gap-1 border-b border-gray-200">
+        {([
+          { id: 'skills', label: 'Skills' },
+          { id: 'history', label: 'Verlauf' },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`relative px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.id
+                ? 'text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute inset-x-2 -bottom-px h-[2px] bg-gray-900" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'history' ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <SkillTimeline
+            history={memberSkillHistory}
+            ratings={memberRatings}
+            skills={skills}
+            categories={categories}
+            timeRange={timeRange}
+            selectedFilter={historyFilter}
+            onTimeRangeChange={setTimeRange}
+            onFilterChange={setHistoryFilter}
+          />
+        </div>
+      ) : (
+        <>
+      {/* Status-Übersicht + Filter */}
+      {canConfirm && (
+        <div className="mb-6 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3">
+          <div className="flex items-center gap-4 text-sm">
+            <span className="flex items-center gap-2">
+              <span className={`inline-block size-[10px] rounded-full ${STATE_DOT.open}`} />
+              <span className="text-gray-700">
+                {totals.open} <span className="text-gray-500">offen</span>
+              </span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className={`inline-block size-[10px] rounded-full ${STATE_DOT.drift}`} />
+              <span className="text-gray-700">
+                {totals.drift} <span className="text-gray-500">drift</span>
+              </span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className={`inline-block size-[10px] rounded-full ${STATE_DOT.confirmed}`} />
+              <span className="text-gray-700">
+                {totals.confirmed} <span className="text-gray-500">bestätigt</span>
+              </span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 rounded-md bg-gray-100 p-1">
+            {(['all', 'open'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setFilter(m)}
+                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                  filter === m
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {m === 'all' ? 'Alle' : 'Nur offen + drift'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {categories.map((category) => {
         const categorySkills = skills.filter(
           (s) => s.categorySlug === category.slug,
         )
         if (categorySkills.length === 0) return null
 
+        // Per-Kategorie-Status-Counts (alle Skills, ungefiltert)
+        const catCounts = emptyCounts()
+        for (const s of categorySkills) {
+          addToCounts(catCounts, getConfirmationState(getRating(s._id)))
+        }
+
+        // Anzeige-Skills nach Filter
+        const visibleSkills =
+          filter === 'open'
+            ? categorySkills.filter((s) => {
+                const state = getConfirmationState(getRating(s._id))
+                return state !== 'confirmed'
+              })
+            : categorySkills
+
+        if (visibleSkills.length === 0) return null
+
         return (
           <div key={category._id} className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
-              {category.title}
-            </h2>
+            <div className="mb-3 flex items-baseline justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold text-gray-800">{category.title}</h2>
+              {canConfirm && (
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  {catCounts.open > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className={`inline-block size-[8px] rounded-full ${STATE_DOT.open}`} />
+                      {catCounts.open} offen
+                    </span>
+                  )}
+                  {catCounts.drift > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className={`inline-block size-[8px] rounded-full ${STATE_DOT.drift}`} />
+                      {catCounts.drift} drift
+                    </span>
+                  )}
+                  {catCounts.confirmed > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className={`inline-block size-[8px] rounded-full ${STATE_DOT.confirmed}`} />
+                      {catCounts.confirmed} bestätigt
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -129,7 +292,7 @@ export function MemberSkillsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {categorySkills.map((skill) => {
+                  {visibleSkills.map((skill) => {
                     const rating = getRating(skill._id)
                     const current = rating?.current_level ?? 0
                     const target = rating?.target_level ?? 0
@@ -139,15 +302,22 @@ export function MemberSkillsPage() {
                       rating?.confirmed_level !== null
                     const confirmedValue =
                       (rating?.confirmed_level ?? current) as SkillLevel
+                    const state = getConfirmationState(rating)
 
                     return (
                       <tr key={skill._id}>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {skill.title}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-block size-[10px] shrink-0 rounded-full ${STATE_DOT[state]}`}
+                              title={STATE_LABEL[state]}
+                            />
+                            <div className="text-sm font-medium text-gray-900">
+                              {skill.title}
+                            </div>
                           </div>
                           {skill.description && (
-                            <div className="text-xs text-gray-500">
+                            <div className="ml-[18px] text-xs text-gray-500">
                               {skill.description}
                             </div>
                           )}
@@ -222,6 +392,8 @@ export function MemberSkillsPage() {
           </div>
         )
       })}
+        </>
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import {
   House,
   ChartBar,
   Users,
+  UsersThree,
   GearSix,
   CaretLeft,
   SignOut,
@@ -19,6 +20,7 @@ type NavItem = {
   requireAdmin?: boolean
   requireEdit?: boolean
   requireTeamManager?: boolean
+  requireDirectReports?: boolean
   children?: NavItem[]
 }
 
@@ -34,18 +36,21 @@ const NAV_ITEMS: NavItem[] = [
       { to: '/skills/catalog', label: 'Skillkatalog', icon: ListBullets, requireTeamManager: true },
     ],
   },
+  { to: '/manager', label: 'Mein Team', icon: UsersThree, requireDirectReports: true },
   { to: '/admin', label: 'Admin', icon: GearSix, requireAdmin: true },
 ]
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
-  const { profile, isAdmin, canEditSkills, canManageTeams, signOut } = useAuthStore()
+  const { profile, isAdmin, canEditSkills, canManageTeams, directReportsCount, signOut } =
+    useAuthStore()
   const location = useLocation()
 
   const isItemAllowed = (item: NavItem) => {
     if (item.requireAdmin && !isAdmin) return false
     if (item.requireEdit && !canEditSkills) return false
     if (item.requireTeamManager && !canManageTeams) return false
+    if (item.requireDirectReports && directReportsCount === 0) return false
     return true
   }
 

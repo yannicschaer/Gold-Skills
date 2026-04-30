@@ -12,11 +12,13 @@ interface AuthState {
   isAdmin: boolean
   canEditSkills: boolean
   canManageTeams: boolean
+  directReportsCount: number
   initialize: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   fetchProfile: (userId: string) => Promise<void>
+  fetchDirectReportsCount: () => Promise<void>
 }
 
 function deriveRoleFlags(role: Profile['role'] | null) {
@@ -53,7 +55,15 @@ async function ensureProfile(user: User) {
   return newProfile as Profile | null
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+async function fetchReportsCount(userId: string) {
+  const { count } = await supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('manager_id', userId)
+  return count ?? 0
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
@@ -62,6 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAdmin: false,
   canEditSkills: false,
   canManageTeams: false,
+  directReportsCount: 0,
 
   initialize: async () => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -72,6 +83,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (profile) {
         set({ profile, ...deriveRoleFlags(profile.role) })
       }
+      set({ directReportsCount: await fetchReportsCount(session.user.id) })
     }
     // Only set loading false AFTER profile is loaded to prevent premature redirects in RoleRoute
     set({ loading: false })
@@ -83,10 +95,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         if (profile) {
           set({ profile, ...deriveRoleFlags(profile.role) })
         }
+        set({ directReportsCount: await fetchReportsCount(session.user.id) })
       } else {
-        set({ profile: null, ...deriveRoleFlags(null) })
+        set({ profile: null, directReportsCount: 0, ...deriveRoleFlags(null) })
       }
     })
+  },
+
+  fetchDirectReportsCount: async () => {
+    const userId = get().user?.id
+    if (!userId) return
+    set({ directReportsCount: await fetchReportsCount(userId) })
   },
 
   signIn: async (email: string, password: string) => {

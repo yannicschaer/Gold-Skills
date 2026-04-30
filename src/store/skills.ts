@@ -11,12 +11,14 @@ interface SkillsState {
   memberRatings: SkillRating[]
   teamRatings: SkillRating[]
   skillHistory: SkillRatingHistory[]
+  memberSkillHistory: SkillRatingHistory[]
   loading: boolean
   fetchSkillCatalog: () => Promise<void>
   fetchMyRatings: (userId: string) => Promise<void>
   fetchUserRatings: (userId: string) => Promise<void>
   fetchTeamRatings: () => Promise<void>
   fetchMySkillHistory: (userId: string, sinceDate?: string) => Promise<void>
+  fetchUserSkillHistory: (userId: string, sinceDate?: string) => Promise<void>
   upsertRating: (
     userId: string,
     skillId: string,
@@ -41,6 +43,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   memberRatings: [],
   teamRatings: [],
   skillHistory: [],
+  memberSkillHistory: [],
   loading: false,
 
   fetchSkillCatalog: async () => {
@@ -99,6 +102,26 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       return
     }
     if (data) set({ skillHistory: data as SkillRatingHistory[] })
+  },
+
+  fetchUserSkillHistory: async (userId: string, sinceDate?: string) => {
+    // Manager-Sicht auf einen Direct Report (RLS lässt nur Manager + Admin durch).
+    let query = supabase
+      .from('skill_rating_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('recorded_date', { ascending: true })
+
+    if (sinceDate) {
+      query = query.gte('recorded_date', sinceDate)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Fehler beim Laden der Member-Skill-Historie:', error)
+      return
+    }
+    if (data) set({ memberSkillHistory: data as SkillRatingHistory[] })
   },
 
   upsertRating: async (userId, skillId, currentLevel, targetLevel) => {
