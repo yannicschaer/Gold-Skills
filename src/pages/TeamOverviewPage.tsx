@@ -32,10 +32,12 @@ export function TeamOverviewPage() {
   }, [fetchSkillCatalog, fetchTeamRatings])
 
   const averages = useMemo(() => {
+    // Team-Aggregate basieren auf confirmed_level (fallback current_level wenn nie bestätigt).
+    // So spiegeln Durchschnitte den offiziell validierten Stand statt unbestätigter Selbst-Edits.
     const map = new Map<string, { currentSum: number; targetSum: number; count: number }>()
     for (const r of teamRatings) {
       const entry = map.get(r.skill_id) ?? { currentSum: 0, targetSum: 0, count: 0 }
-      entry.currentSum += r.current_level
+      entry.currentSum += r.confirmed_level ?? r.current_level
       entry.targetSum += r.target_level
       entry.count += 1
       map.set(r.skill_id, entry)

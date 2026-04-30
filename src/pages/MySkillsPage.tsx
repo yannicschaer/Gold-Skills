@@ -9,18 +9,63 @@ import { ProgressBar } from '@/components/ProgressBar'
 import { DeltaBadge } from '@/components/DeltaBadge'
 import { ExportButtons } from '@/components/ExportButtons'
 import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
-import type { SkillLevel } from '@/types/database'
+import type { SkillLevel, SkillRating } from '@/types/database'
 import type { SkillWithCategory } from '@/types/sanity'
 import { getCutoffDate, type TimeRange } from '@/lib/dateUtils'
 import { CaretUp, X } from '@phosphor-icons/react'
 
 type Tab = 'skills' | 'timeline' | 'analyse'
 
+function formatConfirmDate(iso: string | null) {
+  if (!iso) return null
+  const d = new Date(iso)
+  return d.toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function RatingSummary({ rating }: { rating: SkillRating }) {
+  const isConfirmed = rating.confirmation_status === 'confirmed' && rating.confirmed_level !== null
+  const drift = isConfirmed && rating.confirmed_level !== rating.current_level
+  const confirmedDate = formatConfirmDate(rating.confirmed_at)
+
+  return (
+    <div className="flex flex-col gap-[8px]">
+      <span className="font-body text-[12px] font-semibold text-neutral-400 uppercase tracking-[0.5px]">
+        Deine Bewertung
+      </span>
+      <div className="flex gap-[12px]">
+        <div className="flex-1 rounded-[8px] border border-sand-200 px-[12px] py-[10px] flex flex-col gap-[2px]">
+          <span className="font-body text-[11px] text-neutral-500 uppercase tracking-[0.4px]">Selbst</span>
+          <span className="font-body text-[20px] font-semibold text-forest-950">{rating.current_level}</span>
+        </div>
+        <div className="flex-1 rounded-[8px] border border-sand-200 px-[12px] py-[10px] flex flex-col gap-[2px]">
+          <span className="font-body text-[11px] text-neutral-500 uppercase tracking-[0.4px]">Bestätigt</span>
+          <span className="font-body text-[20px] font-semibold text-forest-950">
+            {isConfirmed ? rating.confirmed_level : '—'}
+          </span>
+        </div>
+      </div>
+      {isConfirmed ? (
+        <span className="font-body text-[12px] text-neutral-500">
+          {drift
+            ? `Selbsteinschätzung weicht ab — bestätigt am ${confirmedDate}`
+            : `Bestätigt am ${confirmedDate}`}
+        </span>
+      ) : (
+        <span className="font-body text-[12px] text-neutral-400 italic">
+          Noch nicht durch Manager:in bestätigt — wird im nächsten Cycle-Review verifiziert.
+        </span>
+      )}
+    </div>
+  )
+}
+
 function SkillDrawer({
   skill,
+  rating,
   onClose,
 }: {
   skill: SkillWithCategory
+  rating?: SkillRating
   onClose: () => void
 }) {
   useEffect(() => {
@@ -66,6 +111,9 @@ function SkillDrawer({
               Keine Beschreibung vorhanden.
             </p>
           )}
+
+          {/* Deine Bewertung */}
+          {rating && <RatingSummary rating={rating} />}
 
           {/* Level Legend */}
           <div className="flex flex-col gap-[2px]">
@@ -179,7 +227,8 @@ export function MySkillsPage() {
     setCollapsed((prev) => ({ ...prev, [categoryId]: !prev[categoryId] }))
   }
 
-  // Build radar data aggregated by category
+  // Radar-Aggregate basieren auf confirmed_level (fallback current_level).
+  // So spiegelt das eigene Radar den offiziell bestätigten Stand und Drift wird sichtbar.
   const radarData = categories
     .filter((cat) => skills.some((s) => s.categorySlug === cat.slug))
     .map((cat) => {
@@ -188,7 +237,7 @@ export function MySkillsPage() {
       let sollSum = 0
       for (const s of catSkills) {
         const r = getRating(s._id)
-        istSum += r?.current_level ?? 0
+        istSum += r?.confirmed_level ?? r?.current_level ?? 0
         sollSum += r?.target_level ?? 0
       }
       return {
@@ -514,6 +563,7 @@ export function MySkillsPage() {
       {selectedSkill && (
         <SkillDrawer
           skill={selectedSkill}
+          rating={getRating(selectedSkill._id)}
           onClose={() => setSelectedSkill(null)}
         />
       )}

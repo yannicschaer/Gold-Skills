@@ -1,13 +1,16 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
 import { supabase } from '@/lib/supabase'
-import type { Profile } from '@/types/database'
+import type { Profile, SkillLevel } from '@/types/database'
 import { ExportButtons } from '@/components/ExportButtons'
+import { SkillStepper } from '@/components/SkillStepper'
 import { exportPersonCsv, exportPersonPdf } from '@/lib/export'
 
 export function MemberSkillsPage() {
   const { userId } = useParams<{ userId: string }>()
+  const { user, isAdmin } = useAuthStore()
   const {
     categories,
     skills,
@@ -15,6 +18,8 @@ export function MemberSkillsPage() {
     loading,
     fetchSkillCatalog,
     fetchUserRatings,
+    confirmRating,
+    clearConfirmation,
   } = useSkillsStore()
 
   const [member, setMember] = useState<Profile | null>(null)
@@ -39,6 +44,26 @@ export function MemberSkillsPage() {
     (skillId: string) => memberRatings.find((r) => r.skill_id === skillId),
     [memberRatings],
   )
+
+  const canConfirm = !!member && !!user && (isAdmin || member.manager_id === user.id)
+
+  const handleConfirm = async (skillId: string, level: SkillLevel) => {
+    if (!userId) return
+    try {
+      await confirmRating(userId, skillId, level)
+    } catch (err) {
+      console.error('Confirmation failed:', err)
+    }
+  }
+
+  const handleClear = async (skillId: string) => {
+    if (!userId) return
+    try {
+      await clearConfirmation(userId, skillId)
+    } catch (err) {
+      console.error('Clear confirmation failed:', err)
+    }
+  }
 
   if (loading || !member) {
     return (
@@ -98,6 +123,9 @@ export function MemberSkillsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
                       Delta
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">
+                      Bestätigt
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -106,6 +134,11 @@ export function MemberSkillsPage() {
                     const current = rating?.current_level ?? 0
                     const target = rating?.target_level ?? 0
                     const delta = target - current
+                    const isConfirmed =
+                      rating?.confirmation_status === 'confirmed' &&
+                      rating?.confirmed_level !== null
+                    const confirmedValue =
+                      (rating?.confirmed_level ?? current) as SkillLevel
 
                     return (
                       <tr key={skill._id}>
@@ -153,6 +186,32 @@ export function MemberSkillsPage() {
                           >
                             {delta > 0 ? `+${delta}` : delta}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {canConfirm ? (
+                            <div className="flex items-center gap-2">
+                              <SkillStepper
+                                value={confirmedValue}
+                                onChange={(v) => handleConfirm(skill._id, v)}
+                              />
+                              {isConfirmed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClear(skill._id)}
+                                  className="text-xs text-gray-500 hover:text-gray-800 underline"
+                                  title="Bestätigung zurücksetzen"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                          ) : isConfirmed ? (
+                            <span className="text-sm text-gray-700">
+                              {rating?.confirmed_level}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">—</span>
+                          )}
                         </td>
                       </tr>
                     )

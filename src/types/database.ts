@@ -7,9 +7,12 @@ export interface Profile {
   role: 'admin' | 'designer' | 'operations'
   is_active: boolean
   avatar_url: string | null
+  manager_id: string | null
   created_at: string
   updated_at: string
 }
+
+export type ConfirmationStatus = 'self_assessed' | 'confirmed'
 
 export interface SkillRating {
   id: string
@@ -17,6 +20,10 @@ export interface SkillRating {
   skill_id: string
   current_level: SkillLevel
   target_level: SkillLevel
+  confirmation_status: ConfirmationStatus
+  confirmed_level: SkillLevel | null
+  confirmed_by: string | null
+  confirmed_at: string | null
   updated_at: string
 }
 
@@ -74,6 +81,10 @@ export interface TeamSkillRating {
   team_skill_id: string
   current_level: SkillLevel
   target_level: SkillLevel
+  confirmation_status: ConfirmationStatus
+  confirmed_level: SkillLevel | null
+  confirmed_by: string | null
+  confirmed_at: string | null
   updated_at: string
 }
 
