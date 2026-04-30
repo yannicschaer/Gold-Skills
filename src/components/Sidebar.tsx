@@ -10,6 +10,7 @@ import {
   CaretLeft,
   SignOut,
   ListBullets,
+  Target,
 } from '@phosphor-icons/react'
 import type { Icon } from '@phosphor-icons/react'
 
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
       { to: '/skills/catalog', label: 'Skillkatalog', icon: ListBullets, requireTeamManager: true },
     ],
   },
+  { to: '/cycle', label: 'Mein Cycle', icon: Target, requireEdit: true },
   { to: '/manager', label: 'Mein Team', icon: UsersThree, requireDirectReports: true },
   { to: '/admin', label: 'Admin', icon: GearSix, requireAdmin: true },
 ]

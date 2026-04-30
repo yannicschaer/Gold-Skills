@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAdminStore } from '@/store/admin'
 import { useAuthStore } from '@/store/auth'
 
@@ -106,9 +107,15 @@ export function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        Mitglieder verwalten
-      </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Mitglieder verwalten</h1>
+        <Link
+          to="/admin/cycles"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Development Cycles →
+        </Link>
+      </div>
 
       {/* Invite Form */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">

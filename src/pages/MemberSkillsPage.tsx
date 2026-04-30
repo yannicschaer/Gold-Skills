@@ -2,8 +2,10 @@ import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth'
 import { useSkillsStore } from '@/store/skills'
+import { useCyclesStore, pickRelevantCycle } from '@/store/cycles'
+import { useGoalsStore } from '@/store/goals'
 import { supabase } from '@/lib/supabase'
-import type { Profile, SkillLevel } from '@/types/database'
+import type { GoalStatus, Profile, SkillLevel } from '@/types/database'
 import { ExportButtons } from '@/components/ExportButtons'
 import { SkillStepper } from '@/components/SkillStepper'
 import { SkillTimeline } from '@/components/SkillTimeline'
@@ -17,7 +19,23 @@ import {
 } from '@/lib/confirmation'
 
 type FilterMode = 'all' | 'open'
-type Tab = 'skills' | 'history'
+type Tab = 'skills' | 'cycle' | 'history'
+
+const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
+  planned: 'Geplant',
+  in_progress: 'Läuft',
+  achieved: 'Erreicht',
+  partially_achieved: 'Teilweise erreicht',
+  missed: 'Nicht erreicht',
+}
+
+const GOAL_STATUS_COLOR: Record<GoalStatus, string> = {
+  planned: 'bg-gray-100 text-gray-700',
+  in_progress: 'bg-yellow-100 text-yellow-800',
+  achieved: 'bg-green-100 text-green-800',
+  partially_achieved: 'bg-amber-100 text-amber-800',
+  missed: 'bg-red-100 text-red-700',
+}
 
 const STATE_LABEL: Record<ConfirmationState, string> = {
   open: 'Offen',
@@ -47,6 +65,9 @@ export function MemberSkillsPage() {
     clearConfirmation,
   } = useSkillsStore()
 
+  const { cycles, fetchCycles } = useCyclesStore()
+  const { reviewGoals, fetchReviewGoals, approveGoal } = useGoalsStore()
+
   const [member, setMember] = useState<Profile | null>(null)
   const [filter, setFilter] = useState<FilterMode>('all')
   const [tab, setTab] = useState<Tab>('skills')
@@ -74,6 +95,18 @@ export function MemberSkillsPage() {
       fetchUserSkillHistory(userId, getCutoffDate(timeRange))
     }
   }, [tab, userId, timeRange, fetchUserSkillHistory])
+
+  useEffect(() => {
+    if (tab === 'cycle') fetchCycles()
+  }, [tab, fetchCycles])
+
+  const activeCycle = useMemo(() => pickRelevantCycle(cycles), [cycles])
+
+  useEffect(() => {
+    if (tab === 'cycle' && userId && activeCycle) {
+      fetchReviewGoals(activeCycle.id, [userId])
+    }
+  }, [tab, userId, activeCycle, fetchReviewGoals])
 
   const getRating = useCallback(
     (skillId: string) => memberRatings.find((r) => r.skill_id === skillId),
@@ -143,6 +176,7 @@ export function MemberSkillsPage() {
       <div className="mb-6 flex items-center gap-1 border-b border-gray-200">
         {([
           { id: 'skills', label: 'Skills' },
+          { id: 'cycle', label: 'Cycle' },
           { id: 'history', label: 'Verlauf' },
         ] as const).map((t) => (
           <button
@@ -176,6 +210,102 @@ export function MemberSkillsPage() {
             onFilterChange={setHistoryFilter}
           />
         </div>
+      ) : tab === 'cycle' ? (
+        !activeCycle ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600">
+            Es ist aktuell kein Development-Cycle verfügbar.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-5">
+              <div className="flex items-baseline gap-2">
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  {activeCycle.status === 'active' ? 'Aktiv' : activeCycle.status === 'upcoming' ? 'Geplant' : 'Geschlossen'}
+                </span>
+                <h2 className="text-lg font-semibold text-gray-900">{activeCycle.name}</h2>
+                <span className="text-sm text-gray-500">
+                  {new Date(activeCycle.start_date).toLocaleDateString('de-CH')}–{new Date(activeCycle.end_date).toLocaleDateString('de-CH')}
+                </span>
+              </div>
+            </div>
+
+            {reviewGoals.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center text-sm text-gray-600">
+                Diese Person hat für den Cycle noch keine Goals gesetzt.
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {reviewGoals.map((goal) => {
+                  const skill = skills.find((s) => s._id === goal.skill_id)
+                  const isApproved = goal.approved_by !== null
+                  return (
+                    <li key={goal.id} className="rounded-lg border border-gray-200 bg-white p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${GOAL_STATUS_COLOR[goal.status]}`}>
+                              {GOAL_STATUS_LABEL[goal.status]}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {skill?.title ?? 'Skill'}
+                            </span>
+                            {isApproved && (
+                              <span className="inline-flex rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                                Bestätigt
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">Ziel-Level {goal.target_level}</p>
+                        </div>
+                      </div>
+
+                      {goal.current_state_text && (
+                        <div className="mt-3 text-sm">
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Was kann ich heute?</div>
+                          <p className="mt-1 whitespace-pre-line text-gray-800">{goal.current_state_text}</p>
+                        </div>
+                      )}
+                      {goal.learning_plan_text && (
+                        <div className="mt-3 text-sm">
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Lernplan</div>
+                          <p className="mt-1 whitespace-pre-line text-gray-800">{goal.learning_plan_text}</p>
+                        </div>
+                      )}
+                      {goal.achievement_text && (
+                        <div className="mt-3 text-sm">
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Was wurde erreicht?</div>
+                          <p className="mt-1 whitespace-pre-line text-gray-800">{goal.achievement_text}</p>
+                        </div>
+                      )}
+
+                      {canConfirm && !isApproved && activeCycle.status !== 'upcoming' && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                          <span className="text-xs text-gray-500">Als Manager:in entscheiden:</span>
+                          {(['achieved', 'partially_achieved', 'missed'] as const).map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => user && approveGoal(goal.id, user.id, s)}
+                              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                s === 'achieved'
+                                  ? 'border-green-300 text-green-700 hover:bg-green-50'
+                                  : s === 'partially_achieved'
+                                  ? 'border-amber-300 text-amber-700 hover:bg-amber-50'
+                                  : 'border-red-300 text-red-700 hover:bg-red-50'
+                              }`}
+                            >
+                              {GOAL_STATUS_LABEL[s]}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )
       ) : (
         <>
       {/* Status-Übersicht + Filter */}
