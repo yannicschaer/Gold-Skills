@@ -36,3 +36,6 @@ Frontend Design Figma/*
 !Frontend Design Figma/.gitkeep
 !Frontend Design Figma/design-tokens.css
 .vercel
+
+# Lokale Imports (Excel-Migrationen, nicht ins Repo)
+gold-skills-imports/
