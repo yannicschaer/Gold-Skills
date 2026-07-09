@@ -47,6 +47,41 @@ export interface Team {
   updated_at: string
 }
 
+export type CycleStatus = 'upcoming' | 'active' | 'closed'
+export type GoalStatus =
+  | 'planned'
+  | 'in_progress'
+  | 'achieved'
+  | 'partially_achieved'
+  | 'missed'
+
+export interface DevelopmentCycle {
+  id: string
+  name: string
+  start_date: string  // "YYYY-MM-DD"
+  end_date: string
+  status: CycleStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface DevelopmentGoal {
+  id: string
+  user_id: string
+  cycle_id: string
+  skill_id: string | null
+  team_skill_id: string | null
+  target_level: SkillLevel
+  current_state_text: string | null
+  learning_plan_text: string | null
+  achievement_text: string | null
+  status: GoalStatus
+  approved_by: string | null
+  approved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface TeamMember {
   id: string
   team_id: string
