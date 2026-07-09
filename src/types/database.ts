@@ -48,12 +48,15 @@ export interface Team {
 }
 
 export type CycleStatus = 'upcoming' | 'active' | 'closed'
+export type CycleType = 'trimester' | 'annual'
 export type GoalStatus =
   | 'planned'
   | 'in_progress'
   | 'achieved'
   | 'partially_achieved'
   | 'missed'
+export type AgreementStatus = 'draft' | 'agreed'
+export type CheckinConfidence = 'on_track' | 'at_risk'
 
 export interface DevelopmentCycle {
   id: string
@@ -61,6 +64,7 @@ export interface DevelopmentCycle {
   start_date: string  // "YYYY-MM-DD"
   end_date: string
   status: CycleStatus
+  cycle_type: CycleType
   created_at: string
   updated_at: string
 }
@@ -78,8 +82,42 @@ export interface DevelopmentGoal {
   status: GoalStatus
   approved_by: string | null
   approved_at: string | null
+  annual_goal_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface AnnualGoal {
+  id: string
+  user_id: string
+  cycle_id: string
+  title: string
+  success_criteria: string
+  due_date: string  // "YYYY-MM-DD"
+  skill_id: string | null
+  team_skill_id: string | null
+  agreement_status: AgreementStatus
+  agreed_by: string | null
+  agreed_at: string | null
+  status: GoalStatus
+  achievement_text: string | null
+  manager_assessment_text: string | null
+  conclusion_text: string | null
+  approved_by: string | null
+  approved_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GoalCheckin {
+  id: string
+  goal_id: string
+  author_id: string
+  note: string
+  confidence: CheckinConfidence
+  next_step: string | null
+  created_at: string
 }
 
 export interface TeamMember {
@@ -164,6 +202,19 @@ export interface Database {
       skill_rating_history: {
         Row: SkillRatingHistory
         Insert: never
+        Update: never
+      }
+      annual_goals: {
+        Row: AnnualGoal
+        Insert: Omit<
+          AnnualGoal,
+          'id' | 'agreed_by' | 'agreed_at' | 'approved_by' | 'approved_at' | 'created_by' | 'created_at' | 'updated_at'
+        >
+        Update: Partial<Omit<AnnualGoal, 'id' | 'user_id' | 'cycle_id' | 'created_at'>>
+      }
+      goal_checkins: {
+        Row: GoalCheckin
+        Insert: Omit<GoalCheckin, 'id' | 'created_at'>
         Update: never
       }
     }

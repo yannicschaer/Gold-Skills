@@ -15,6 +15,8 @@ import { TeamCatalogPage } from '@/pages/TeamCatalogPage'
 import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage'
 import { AdminCyclesPage } from '@/pages/AdminCyclesPage'
 import { MyCyclePage } from '@/pages/MyCyclePage'
+import { MyAnnualGoalsPage } from '@/pages/MyAnnualGoalsPage'
+import { TeamAnnualGoalsPage } from '@/pages/TeamAnnualGoalsPage'
 
 export default function App() {
   const { initialize } = useAuthStore()
@@ -56,6 +58,15 @@ export default function App() {
               </RoleRoute>
             }
           />
+          <Route
+            path="/annual-goals"
+            element={
+              <RoleRoute allowedRoles={['admin', 'designer']} redirectTo="/">
+                <MyAnnualGoalsPage />
+              </RoleRoute>
+            }
+          />
+          <Route path="/manager/goals" element={<TeamAnnualGoalsPage />} />
           <Route
             path="/skills/catalog"
             element={

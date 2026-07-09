@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useCyclesStore } from '@/store/cycles'
-import type { CycleStatus, DevelopmentCycle } from '@/types/database'
+import type { CycleStatus, CycleType, DevelopmentCycle } from '@/types/database'
 
 const STATUS_LABEL: Record<CycleStatus, string> = {
   upcoming: 'Geplant',
@@ -13,6 +13,11 @@ const STATUS_COLOR: Record<CycleStatus, string> = {
   upcoming: 'bg-blue-100 text-blue-800',
   active: 'bg-green-100 text-green-800',
   closed: 'bg-gray-100 text-gray-700',
+}
+
+const TYPE_LABEL: Record<CycleType, string> = {
+  trimester: 'Trimester',
+  annual: 'Jahr',
 }
 
 function formatDate(iso: string) {
@@ -30,6 +35,7 @@ export function AdminCyclesPage() {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [cycleType, setCycleType] = useState<CycleType>('trimester')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -54,6 +60,7 @@ export function AdminCyclesPage() {
         name: name.trim(),
         start_date: startDate,
         end_date: endDate,
+        cycle_type: cycleType,
       })
       if (!created) {
         setError('Erstellung fehlgeschlagen — siehe Console')
@@ -151,6 +158,19 @@ export function AdminCyclesPage() {
               className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Typ
+            </label>
+            <select
+              value={cycleType}
+              onChange={(e) => setCycleType(e.target.value as CycleType)}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+            >
+              <option value="trimester">Trimester (Fokus-Skills)</option>
+              <option value="annual">Jahr (Jahresziele)</option>
+            </select>
+          </div>
           <button
             type="submit"
             disabled={submitting}
@@ -199,6 +219,15 @@ export function AdminCyclesPage() {
               <tr key={cycle.id}>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
                   {cycle.name}
+                  <span
+                    className={`ml-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      cycle.cycle_type === 'annual'
+                        ? 'bg-purple-50 text-purple-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {TYPE_LABEL[cycle.cycle_type]}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
                   {formatDate(cycle.start_date)} – {formatDate(cycle.end_date)}

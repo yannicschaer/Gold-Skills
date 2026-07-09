@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuthStore } from '@/store/auth'
 import { useCyclesStore, pickRelevantCycle } from '@/store/cycles'
 import { useGoalsStore } from '@/store/goals'
+import { useAnnualGoalsStore } from '@/store/annualGoals'
 import { useSkillsStore } from '@/store/skills'
 import type {
+  AnnualGoal,
   DevelopmentCycle,
   DevelopmentGoal,
   GoalStatus,
@@ -53,17 +55,30 @@ export function MyCyclePage() {
   const { skills, fetchSkillCatalog } = useSkillsStore()
   const { myGoals, fetchMyGoals, createGoal, updateGoal, deleteGoal } =
     useGoalsStore()
+  const { myGoals: annualGoals, fetchMyGoals: fetchMyAnnualGoals } =
+    useAnnualGoalsStore()
 
   useEffect(() => {
     fetchCycles()
     fetchSkillCatalog()
   }, [fetchCycles, fetchSkillCatalog])
 
-  const cycle = useMemo(() => pickRelevantCycle(cycles), [cycles])
+  const cycle = useMemo(
+    () => pickRelevantCycle(cycles.filter((c) => c.cycle_type === 'trimester')),
+    [cycles],
+  )
+  const annualCycle = useMemo(
+    () => pickRelevantCycle(cycles.filter((c) => c.cycle_type === 'annual')),
+    [cycles],
+  )
 
   useEffect(() => {
     if (user && cycle) fetchMyGoals(user.id, cycle.id)
   }, [user, cycle, fetchMyGoals])
+
+  useEffect(() => {
+    if (user && annualCycle) fetchMyAnnualGoals(user.id, annualCycle.id)
+  }, [user, annualCycle, fetchMyAnnualGoals])
 
   if (!cycle) {
     return (
@@ -81,6 +96,7 @@ export function MyCyclePage() {
     <div>
       <CycleHeader cycle={cycle} />
       <GoalsSection cycle={cycle} goals={myGoals} skills={skills} userId={user?.id ?? ''}
+        annualGoals={annualGoals.filter((g) => g.agreement_status === 'agreed')}
         createGoal={createGoal} updateGoal={updateGoal} deleteGoal={deleteGoal}
       />
     </div>
@@ -125,6 +141,7 @@ interface GoalsSectionProps {
   goals: DevelopmentGoal[]
   skills: ReturnType<typeof useSkillsStore.getState>['skills']
   userId: string
+  annualGoals: AnnualGoal[]
   createGoal: ReturnType<typeof useGoalsStore.getState>['createGoal']
   updateGoal: ReturnType<typeof useGoalsStore.getState>['updateGoal']
   deleteGoal: ReturnType<typeof useGoalsStore.getState>['deleteGoal']
@@ -135,6 +152,7 @@ function GoalsSection({
   goals,
   skills,
   userId,
+  annualGoals,
   createGoal,
   updateGoal,
   deleteGoal,
@@ -177,6 +195,7 @@ function GoalsSection({
           userId={userId}
           allSkills={skills}
           excludeSkillIds={usedSkillIds}
+          annualGoals={annualGoals}
           onCreated={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
           createGoal={createGoal}
@@ -208,6 +227,11 @@ function GoalsSection({
             skillTitle={
               goal.skill_id ? skillsById[goal.skill_id]?.title ?? 'Unbekannter Skill' : 'Team-Skill'
             }
+            annualGoalTitle={
+              goal.annual_goal_id
+                ? annualGoals.find((a) => a.id === goal.annual_goal_id)?.title ?? null
+                : null
+            }
             editable={editable}
             updateGoal={updateGoal}
             deleteGoal={deleteGoal}
@@ -223,6 +247,7 @@ interface NewGoalFormProps {
   userId: string
   allSkills: ReturnType<typeof useSkillsStore.getState>['skills']
   excludeSkillIds: Set<string>
+  annualGoals: AnnualGoal[]
   onCreated: () => void
   onCancel: () => void
   createGoal: ReturnType<typeof useGoalsStore.getState>['createGoal']
@@ -233,6 +258,7 @@ function NewGoalForm({
   userId,
   allSkills,
   excludeSkillIds,
+  annualGoals,
   onCreated,
   onCancel,
   createGoal,
@@ -241,6 +267,7 @@ function NewGoalForm({
   const [targetLevel, setTargetLevel] = useState<SkillLevel>(3)
   const [currentState, setCurrentState] = useState('')
   const [plan, setPlan] = useState('')
+  const [annualGoalId, setAnnualGoalId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -262,6 +289,7 @@ function NewGoalForm({
         target_level: targetLevel,
         current_state_text: currentState.trim() || null,
         learning_plan_text: plan.trim() || null,
+        annual_goal_id: annualGoalId || null,
       })
       if (!created) {
         setError('Speichern fehlgeschlagen — siehe Console')
@@ -328,6 +356,26 @@ function NewGoalForm({
         />
       </div>
 
+      {annualGoals.length > 0 && (
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            Zahlt ein auf Jahresziel (optional)
+          </label>
+          <select
+            value={annualGoalId}
+            onChange={(e) => setAnnualGoalId(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">— Kein Bezug —</option>
+            {annualGoals.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-2">
@@ -353,6 +401,7 @@ function NewGoalForm({
 interface GoalCardProps {
   goal: DevelopmentGoal
   skillTitle: string
+  annualGoalTitle: string | null
   editable: boolean
   updateGoal: ReturnType<typeof useGoalsStore.getState>['updateGoal']
   deleteGoal: ReturnType<typeof useGoalsStore.getState>['deleteGoal']
@@ -361,6 +410,7 @@ interface GoalCardProps {
 function GoalCard({
   goal,
   skillTitle,
+  annualGoalTitle,
   editable,
   updateGoal,
   deleteGoal,
@@ -412,6 +462,7 @@ function GoalCard({
           </div>
           <p className="mt-0.5 truncate text-xs text-gray-500">
             Ziel-Level {goal.target_level}
+            {annualGoalTitle && ` · Jahresziel: ${annualGoalTitle}`}
           </p>
         </div>
         <span className="text-xs text-gray-400">{expanded ? '▴' : '▾'}</span>

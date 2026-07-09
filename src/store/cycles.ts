@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CycleStatus, DevelopmentCycle } from '@/types/database'
+import type { CycleStatus, CycleType, DevelopmentCycle } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 
 interface CyclesState {
@@ -12,6 +12,7 @@ interface CyclesState {
     start_date: string
     end_date: string
     status?: CycleStatus
+    cycle_type?: CycleType
   }) => Promise<DevelopmentCycle | null>
   updateCycle: (
     id: string,
@@ -35,10 +36,10 @@ export const useCyclesStore = create<CyclesState>((set, get) => ({
     set({ loading: false })
   },
 
-  createCycle: async ({ name, start_date, end_date, status = 'upcoming' }) => {
+  createCycle: async ({ name, start_date, end_date, status = 'upcoming', cycle_type = 'trimester' }) => {
     const { data, error } = await supabase
       .from('development_cycles')
-      .insert({ name, start_date, end_date, status } as never)
+      .insert({ name, start_date, end_date, status, cycle_type } as never)
       .select()
       .single()
     if (error) {

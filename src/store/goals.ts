@@ -10,6 +10,7 @@ export interface GoalInsert {
   target_level: SkillLevel
   current_state_text?: string | null
   learning_plan_text?: string | null
+  annual_goal_id?: string | null
 }
 
 export interface GoalUpdate {
@@ -70,6 +71,7 @@ export const useGoalsStore = create<GoalsState>((set, get) => ({
     }
     if (input.skill_id) payload.skill_id = input.skill_id
     if (input.team_skill_id) payload.team_skill_id = input.team_skill_id
+    if (input.annual_goal_id) payload.annual_goal_id = input.annual_goal_id
 
     const { data, error } = await supabase
       .from('development_goals')
