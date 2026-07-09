@@ -15,6 +15,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/skills': 'Skills Matrix',
   '/team': 'Team Skills',
   '/admin': 'Admin',
+  '/annual-goals': 'Jahresziele',
+  '/manager/goals': 'Team-Jahresziele',
 }
 
 export function Layout() {

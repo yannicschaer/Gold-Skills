@@ -127,11 +127,21 @@ export function ManagerDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Mein Team</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        {reports.length} {reports.length === 1 ? 'Person' : 'Personen'} berichten an dich.
-        Klick auf eine Karte, um Skills zu bestätigen.
-      </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Mein Team</h1>
+          <p className="text-sm text-gray-500">
+            {reports.length} {reports.length === 1 ? 'Person' : 'Personen'} berichten an dich.
+            Klick auf eine Karte, um Skills zu bestätigen.
+          </p>
+        </div>
+        <Link
+          to="/manager/goals"
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Team-Jahresziele →
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {rows.map(({ profile, counts, lastConfirmedAt }) => {
